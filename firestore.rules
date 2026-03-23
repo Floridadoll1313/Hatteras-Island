@@ -24,6 +24,10 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
+    function isValidEmail(email) {
+      return email is string && email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$');
+    }
+
     function isValidComment(data) {
       return data.keys().hasAll(['authorName', 'authorUid', 'text', 'timestamp']) &&
              data.authorName is string && data.authorName.size() > 0 && data.authorName.size() <= 50 &&
