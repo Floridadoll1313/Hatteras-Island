@@ -19,32 +19,76 @@ async function startServer() {
       return res.status(500).json({ error: "Stripe is not configured. Please add STRIPE_SECRET_KEY to your environment variables." });
     }
 
-    const { tier, price } = req.body;
+    const { name, price, description, email } = req.body;
 
     try {
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ["card"],
+        customer_email: email,
         line_items: [
           {
             price_data: {
               currency: "usd",
               product_data: {
-                name: `REALM: ${tier.toUpperCase()} Tier`,
-                description: `Access to ${tier} features in the Never-ending REALM.`,
+                name: name,
+                description: description || `Subscription for ${name}`,
               },
-              unit_amount: price * 100,
+              unit_amount: Math.round(price * 100),
               recurring: { interval: "month" },
             },
             quantity: 1,
           },
         ],
         mode: "subscription",
-        success_url: `${process.env.APP_URL}?session_id={CHECKOUT_SESSION_ID}&status=success`,
+        success_url: `${process.env.APP_URL}?status=success&plan=${encodeURIComponent(name)}&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${process.env.APP_URL}?status=cancel`,
       });
 
       res.json({ url: session.url });
     } catch (error: any) {
+      console.error("Stripe Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Retrieve Checkout Session Endpoint
+  app.get("/api/checkout-session/:sessionId", async (req, res) => {
+    if (!stripe) {
+      return res.status(500).json({ error: "Stripe is not configured." });
+    }
+
+    try {
+      const session = await stripe.checkout.sessions.retrieve(req.params.sessionId);
+      res.json({ customer: session.customer });
+    } catch (error: any) {
+      console.error("Stripe Retrieve Session Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Stripe Customer Portal Endpoint
+  app.post("/api/create-portal-session", async (req, res) => {
+    if (!stripe) {
+      return res.status(500).json({ error: "Stripe is not configured." });
+    }
+
+    const { customerId } = req.body;
+
+    try {
+      // In a real app, you'd fetch the customerId from your database
+      // For this demo, if no customerId is provided, we can't create a portal session
+      if (!customerId) {
+        return res.status(400).json({ error: "Customer ID is required for portal access." });
+      }
+
+      const session = await stripe.billingPortal.sessions.create({
+        customer: customerId,
+        return_url: process.env.APP_URL,
+      });
+
+      res.json({ url: session.url });
+    } catch (error: any) {
+      console.error("Stripe Portal Error:", error);
       res.status(500).json({ error: error.message });
     }
   });

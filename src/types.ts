@@ -8,6 +8,7 @@ export interface RealmNode {
   lore: string;
   item?: InventoryItem;
   enemy?: Enemy;
+  npc?: NPC;
   imageUrl?: string;
 }
 
@@ -69,7 +70,7 @@ export interface InventoryItem {
   id: string;
   name: string;
   description: string;
-  type: 'artifact' | 'tool' | 'data_fragment';
+  type: 'artifact' | 'tool' | 'data_fragment' | 'material';
   rarity: 'common' | 'rare' | 'exotic' | 'legendary';
   effect?: string;
   passiveBonus?: string;
@@ -90,6 +91,62 @@ export interface AIResponse {
   content: string;
   timestamp: number;
   metadata?: any;
+}
+
+export interface Task {
+  id: string;
+  title: string;
+  description: string;
+  completed: boolean;
+  reward?: number;
+}
+
+export interface CraftingRecipe {
+  id: string;
+  name: string;
+  description: string;
+  ingredients: { itemId: string; count: number }[];
+  result: InventoryItem;
+}
+
+export type WeatherType = 'clear' | 'stormy' | 'foggy' | 'heatwave' | 'hurricane';
+export type TideState = 'low' | 'high' | 'incoming' | 'outgoing';
+
+export interface NPC {
+  id: string;
+  name: string;
+  role: string;
+  description: string;
+  dialogue: string[];
+  trades?: { input: string; output: InventoryItem }[];
+}
+
+export interface LighthouseUpgrade {
+  id: string;
+  name: string;
+  description: string;
+  level: number;
+  cost: number;
+  bonus: string;
+}
+
+export interface LighthouseState {
+  level: number;
+  upgrades: string[];
+  lastVisited: number;
+  signalRange: number;
+  storageCapacity: number;
+  defenseLevel: number;
+  energyEfficiency: number;
+}
+
+export type FactionType = 'none' | 'preservationist' | 'explorer' | 'reclaimer';
+
+export interface SurfingGameState {
+  isActive: boolean;
+  score: number;
+  multiplier: number;
+  distance: number;
 }
 
 export interface GameState {
@@ -116,6 +173,20 @@ export interface GameState {
   subscription: {
     tier: SubscriptionTier;
     status: 'active' | 'inactive' | 'pending';
+    stripeCustomerId?: string;
   };
   aiResponses: AIResponse[];
+  tasks: Task[];
+  weather: WeatherType;
+  tide: TideState;
+  lighthouse: LighthouseState;
+  faction: FactionType;
+  factionReputation: number;
+  surfingGame: SurfingGameState;
+  business: {
+    revenue: number;
+    activeClients: number;
+    workflowsSold: number;
+    reputation: number;
+  };
 }

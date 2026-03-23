@@ -1,5 +1,26 @@
 {
   "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and game state data.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "gameState": { "type": "object" },
+        "subscription": {
+          "type": "object",
+          "properties": {
+            "tier": { "type": "string" },
+            "status": { "type": "string" },
+            "stripeCustomerId": { "type": "string" },
+            "updatedAt": { "type": "string", "format": "date-time" }
+          }
+        },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "gameState", "updatedAt"]
+    },
     "Comment": {
       "title": "Comment",
       "description": "A comment left on the memorial page to pay respects.",
@@ -12,12 +33,31 @@
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["authorName", "authorUid", "text", "timestamp"]
+    },
+    "Lead": {
+      "title": "Lead",
+      "description": "An email captured from an intake form.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "source": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "timestamp"]
     }
   },
   "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Collection of user profiles and game states."
+    },
     "/comments/{commentId}": {
       "schema": "Comment",
       "description": "Collection of comments left on the memorial page."
+    },
+    "/leads/{leadId}": {
+      "schema": "Lead",
+      "description": "Collection of captured emails."
     }
   }
 }

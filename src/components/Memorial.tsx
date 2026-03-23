@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Anchor, Waves, Compass, Heart, ArrowLeft, Hammer, Map, Info, Send, User, Trash2, MessageSquare, ChevronDown, BookOpen } from 'lucide-react';
-import { db, auth, signIn } from '../firebase';
+import { db, auth, signIn, handleFirestoreError, OperationType } from '../firebase';
 import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, deleteDoc, doc } from 'firebase/firestore';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import EmailIntake from './EmailIntake';
 
 interface Comment {
   id: string;
@@ -46,7 +47,7 @@ const Memorial = ({ onBack }: { onBack: () => void }) => {
     const id = Date.now();
     setRipples(prev => [...prev, { id, x, y }]);
     setTimeout(() => {
-      setRipples(prev => prev.filter(r => r.id !== id));
+      setRipples(prev => (prev || []).filter(r => r.id !== id));
     }, 1000);
   };
 
@@ -65,6 +66,8 @@ const Memorial = ({ onBack }: { onBack: () => void }) => {
         ...doc.data()
       })) as Comment[];
       setComments(fetchedComments);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'comments');
     });
     return () => unsubscribe();
   }, []);
@@ -87,7 +90,7 @@ const Memorial = ({ onBack }: { onBack: () => void }) => {
       });
       setNewComment('');
     } catch (error) {
-      console.error('Error adding comment:', error);
+      handleFirestoreError(error, OperationType.CREATE, 'comments');
     } finally {
       setIsSubmitting(false);
     }
@@ -98,7 +101,7 @@ const Memorial = ({ onBack }: { onBack: () => void }) => {
     try {
       await deleteDoc(doc(db, 'comments', commentId));
     } catch (error) {
-      console.error('Error deleting comment:', error);
+      handleFirestoreError(error, OperationType.DELETE, `comments/${commentId}`);
     }
   };
 
@@ -552,7 +555,11 @@ const Memorial = ({ onBack }: { onBack: () => void }) => {
       </section>
 
       {/* Footer */}
-      <footer className="py-20 border-t border-white/5 text-center relative z-10">
+      <footer className="py-20 border-t border-white/5 text-center relative z-10 space-y-12">
+        <div className="max-w-md mx-auto px-6">
+          <h4 className="text-xs font-mono uppercase tracking-[0.3em] text-white/40 mb-6">Stay Connected to the Legacy</h4>
+          <EmailIntake source="memorial_footer" variant="memorial" />
+        </div>
         <p className="text-[10px] font-mono text-white/10 uppercase tracking-[0.5em]">
           Hatteras Island Legacy &copy; 2026
         </p>

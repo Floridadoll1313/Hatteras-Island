@@ -47,9 +47,33 @@ import {
   Pause,
   VolumeX,
   RefreshCw,
-  Trash2
+  Trash2,
+  CheckCircle2,
+  Circle,
+  TrendingUp,
+  DollarSign,
+  Briefcase,
+  BarChart3,
+  Rocket,
+  Mail
 } from 'lucide-react';
-import { RealmNode, GameState, SubscriptionTier, BranchingPath, WorldEvent, CombatState, Enemy, AIStage, AITrait, CombatLogEntry, AIResponse } from './types';
+import { 
+  RealmNode, 
+  GameState, 
+  SubscriptionTier, 
+  BranchingPath, 
+  WorldEvent, 
+  CombatState, 
+  Enemy, 
+  AIStage, 
+  AITrait, 
+  CombatLogEntry, 
+  AIResponse,
+  WeatherType,
+  TideState,
+  LighthouseUpgrade,
+  FactionType
+} from './types';
 import { 
   generateInitialRealm, 
   generateNextRealm, 
@@ -65,15 +89,28 @@ import {
   generateSpeech,
   getThinkingResponse,
   getMapsGroundingResponse,
-  getFastResponse
+  getFastResponse,
+  getSearchGroundingResponse,
+  editImage,
+  getLiveAudioSession
 } from './services/geminiService';
 import Markdown from 'react-markdown';
-import { db, auth, signIn, signOut } from './firebase';
+import { db, auth, signIn, signOut, handleFirestoreError, OperationType } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
+import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import Memorial from './components/Memorial';
 import AmbientAudio from './components/AmbientAudio';
 import ApiKeySelector from './components/ApiKeySelector';
 import AILab from './components/AILab';
+import Lighthouse from './components/Lighthouse';
+import FactionSelection from './components/FactionSelection';
+import SurfingGame from './components/SurfingGame';
+import Founders from './components/Founders';
+import BusinessDashboard from './components/BusinessDashboard';
+import SalesCenter from './components/SalesCenter';
+import SubscriptionSuccess from './components/SubscriptionSuccess';
+import EmailIntake from './components/EmailIntake';
+import ErrorBoundary from './components/ErrorBoundary';
 
 const SAVE_KEY = 'ai_surfer_realm_save';
 
@@ -99,34 +136,34 @@ const AI_TRAITS: AITrait[] = [
 const TIERS = [
   {
     id: 'initiate',
-    name: 'Beachcomber',
-    price: 17,
-    description: 'The core island experience.',
-    features: ['Unlimited Island Exploration', 'Basic Legacy Evolution', 'Standard Lore Access'],
+    name: 'Navigator (SMB)',
+    price: 499,
+    description: 'The essential toolkit for small business automation.',
+    features: ['50,000 AI Workflow Runs/mo', 'Full API Access & Webhooks', '5 Team Seats Included', 'Standard Support SLA'],
     color: '#00E0FF'
   },
   {
     id: 'automator',
-    name: 'Navigator',
-    price: 29,
-    description: 'For those who seek the deep waters.',
-    features: ['Auto-Exploration Workflows', 'Faster Legacy Evolution', 'Advanced Entity Interaction'],
+    name: 'Lighthouse (Growth)',
+    price: 1299,
+    description: 'Scale your operations with advanced neural processing.',
+    features: ['250,000 AI Workflow Runs/mo', 'Priority Neural Processing', '20 Team Seats Included', 'Custom Model Fine-tuning'],
     color: '#0080FF'
   },
   {
     id: 'architect',
-    name: 'Lighthouse Keeper',
-    price: 49,
-    description: 'Guide the way for others.',
-    features: ['Custom Lore Injection', 'Environment Manipulation', 'Priority Legacy Processing'],
+    name: 'Neural Nexus (Scale)',
+    price: 3499,
+    description: 'Enterprise-grade power for high-volume island networks.',
+    features: ['1,000,000 AI Workflow Runs/mo', 'Dedicated Infrastructure', 'Unlimited Team Seats', '24/7 Priority Support'],
     color: '#FFD700'
   },
   {
     id: 'omniscient',
-    name: 'OBX Legend',
-    price: 99,
-    description: 'Total mastery over the Outer Banks.',
-    features: ['Full Automation Suite', 'Multi-Island Synchronization', 'Direct Island Soul Access'],
+    name: 'Island Sovereign (Elite)',
+    price: 7999,
+    description: 'Total mastery over the Outer Banks digital ecosystem.',
+    features: ['Unlimited AI Workflow Runs', 'On-Premise Deployment Options', 'White-labeling & Custom Branding', 'Dedicated Success Manager'],
     color: '#FFFFFF'
   }
 ];
@@ -157,7 +194,37 @@ export default function App() {
       tier: 'none',
       status: 'inactive'
     },
-    aiResponses: []
+    aiResponses: [],
+    tasks: [
+      { id: 'arrival', title: 'Island Arrival', description: 'Reach your first destination on Hatteras Island.', completed: false, reward: 50 },
+      { id: 'neural', title: 'Neural Link', description: 'Establish a connection with the island\'s AI.', completed: false, reward: 100 },
+      { id: 'scavenger', title: 'Scavenger', description: 'Find your first piece of gear.', completed: false, reward: 75 }
+    ],
+    weather: 'clear',
+    tide: 'low',
+    lighthouse: {
+      level: 1,
+      upgrades: [],
+      lastVisited: Date.now(),
+      signalRange: 1,
+      storageCapacity: 1,
+      defenseLevel: 1,
+      energyEfficiency: 1
+    },
+    faction: 'none',
+    factionReputation: 0,
+    surfingGame: {
+      isActive: false,
+      score: 0,
+      multiplier: 1,
+      distance: 0
+    },
+    business: {
+      revenue: 0,
+      activeClients: 0,
+      workflowsSold: 0,
+      reputation: 0
+    }
   });
   const [loading, setLoading] = useState(true);
   const [transitioning, setTransitioning] = useState(false);
@@ -166,8 +233,58 @@ export default function App() {
   const [showFounders, setShowFounders] = useState(false);
   const [showMemorial, setShowMemorial] = useState(false);
   const [showAILab, setShowAILab] = useState(false);
+  const [showLighthouse, setShowLighthouse] = useState(false);
+  const [showFactionSelection, setShowFactionSelection] = useState(false);
+  const [showSurfingGame, setShowSurfingGame] = useState(false);
   const [showApiKeySelector, setShowApiKeySelector] = useState(false);
-  const [aiLabTab, setAiLabTab] = useState<'chat' | 'generate' | 'analyze' | 'maps'>('chat');
+  const [showBusinessDashboard, setShowBusinessDashboard] = useState(false);
+  const [showSalesCenter, setShowSalesCenter] = useState(false);
+  const [showSubscriptionSuccess, setShowSubscriptionSuccess] = useState<{ plan: string } | null>(null);
+  const [hasPaidKey, setHasPaidKey] = useState(false);
+
+  useEffect(() => {
+    const checkKey = async () => {
+      if (window.aistudio?.hasSelectedApiKey) {
+        try {
+          const has = await window.aistudio.hasSelectedApiKey();
+          setHasPaidKey(has);
+        } catch (error) {
+          console.error("Error checking API key:", error);
+        }
+      }
+    };
+    checkKey();
+  }, []);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setGameState(prev => {
+        const weathers: WeatherType[] = ['clear', 'stormy', 'foggy', 'heatwave', 'hurricane'];
+        const tides: TideState[] = ['low', 'high', 'incoming', 'outgoing'];
+        
+        const nextWeather = Math.random() < 0.1 ? weathers[Math.floor(Math.random() * weathers.length)] : prev.weather;
+        
+        // Cycle tides
+        let nextTide = prev.tide;
+        if (prev.tide === 'low') nextTide = 'incoming';
+        else if (prev.tide === 'incoming') nextTide = 'high';
+        else if (prev.tide === 'high') nextTide = 'outgoing';
+        else if (prev.tide === 'outgoing') nextTide = 'low';
+
+        if (nextWeather !== prev.weather || nextTide !== prev.tide) {
+          return {
+            ...prev,
+            weather: nextWeather,
+            tide: nextTide,
+            history: [`ENVIRONMENT_UPDATE: Weather is now ${nextWeather}, Tide is ${nextTide}.`, ...prev.history]
+          };
+        }
+        return prev;
+      });
+    }, 60000); // Update every minute
+    return () => clearInterval(interval);
+  }, []);
+
+  const [aiLabTab, setAiLabTab] = useState<'chat' | 'generate' | 'analyze' | 'maps' | 'craft'>('chat');
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const [imagePrompt, setImagePrompt] = useState('');
@@ -178,16 +295,20 @@ export default function App() {
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [mapsInput, setMapsInput] = useState('');
   const [mapsLoading, setMapsLoading] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [imageEditPrompt, setImageEditPrompt] = useState('');
   const [thinkingMode, setThinkingMode] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [transcribing, setTranscribing] = useState(false);
   const [playingAudio, setPlayingAudio] = useState<string | null>(null);
+  const [liveSession, setLiveSession] = useState<any>(null);
+  const [liveTranscript, setLiveTranscript] = useState<string[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const [combatLogFilter, setCombatLogFilter] = useState<'all' | 'player' | 'enemy' | 'system'>('all');
   const [showPastLogs, setShowPastLogs] = useState(false);
-  const [activeTab, setActiveTab] = useState<'logs' | 'inventory'>('logs');
+  const [activeTab, setActiveTab] = useState<'logs' | 'inventory' | 'tasks' | 'hub'>('logs');
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [loreData, setLoreData] = useState<string | null>(null);
@@ -203,6 +324,59 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get('status');
+    const plan = params.get('plan');
+    const sessionId = params.get('session_id');
+
+    if (status === 'success' && plan) {
+      setShowSubscriptionSuccess({ plan });
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      // Update state and Firestore
+      if (user) {
+        const updateSubscription = async () => {
+          try {
+            let customerId = '';
+            if (sessionId) {
+              const res = await fetch(`/api/checkout-session/${sessionId}`);
+              const data = await res.json();
+              customerId = data.customer;
+            }
+
+            const userRef = doc(db, 'users', user.uid);
+            const subData = {
+              tier: plan,
+              status: 'active',
+              stripeCustomerId: customerId,
+              updatedAt: new Date().toISOString()
+            };
+            
+            await updateDoc(userRef, {
+              subscription: subData,
+              updatedAt: serverTimestamp()
+            });
+
+            setGameState(prev => ({
+              ...prev,
+              subscription: {
+                tier: plan as SubscriptionTier,
+                status: 'active',
+                stripeCustomerId: customerId
+              },
+              history: [`SUBSCRIPTION_ACTIVATED: ${plan} plan is now active.`, ...prev.history]
+            }));
+          } catch (error) {
+            handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}`);
+          }
+        };
+        updateSubscription();
+      }
+    }
+  }, [user]);
+
   const SKILLS = [
     { id: 'explorer', name: 'Path of the Beachcomber', description: 'Unlocks deeper, more distant island reaches.', cost: 5, icon: Globe },
     { id: 'analyst', name: 'Path of the Lore Keeper', description: 'Reveals hidden island history and secret markers.', cost: 8, icon: Eye },
@@ -215,7 +389,35 @@ export default function App() {
   useEffect(() => {
     async function init() {
       try {
-        const savedData = localStorage.getItem(SAVE_KEY);
+        let savedData: string | null = null;
+        
+        if (user) {
+          const path = `users/${user.uid}`;
+          try {
+            const userDoc = await getDoc(doc(db, 'users', user.uid));
+            if (userDoc.exists()) {
+              const data = userDoc.data();
+              savedData = JSON.stringify(data.gameState);
+              if (data.subscription) {
+                setGameState(prev => ({
+                  ...prev,
+                  subscription: {
+                    tier: data.subscription.tier,
+                    status: data.subscription.status,
+                    stripeCustomerId: data.subscription.stripeCustomerId
+                  }
+                }));
+              }
+            }
+          } catch (error) {
+            handleFirestoreError(error, OperationType.GET, path);
+          }
+        }
+
+        if (!savedData) {
+          savedData = localStorage.getItem(SAVE_KEY);
+        }
+
         if (savedData) {
           const parsed = JSON.parse(savedData);
           // Ensure activeEvents, playerStats, and aiStatus.stage exist for backward compatibility
@@ -223,6 +425,8 @@ export default function App() {
             ...parsed,
             sandDollars: parsed.sandDollars ?? parsed.neuralPoints ?? 0,
             activeEvents: parsed.activeEvents || [],
+            inventory: parsed.inventory || [],
+            tasks: parsed.tasks || [],
             playerStats: parsed.playerStats || {
               health: 100,
               maxHealth: 100,
@@ -239,7 +443,7 @@ export default function App() {
           });
           setGameState(prev => ({
             ...prev,
-            history: [...prev.history, "System Alert: Consciousness restored from local storage."]
+            history: [...prev.history, "System Alert: Consciousness restored."]
           }));
         } else {
           const initial = await generateInitialRealm();
@@ -265,24 +469,37 @@ export default function App() {
       }
     }
     init();
-
-    // Check for success status in URL
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('status') === 'success') {
-      setGameState(prev => ({
-        ...prev,
-        subscription: { tier: 'initiate', status: 'active' },
-        history: [...prev.history, "System Alert: Subscription Activated. Consciousness Enhanced."]
-      }));
-    }
-  }, []);
+  }, [user]);
 
   // Auto-save whenever gameState changes
   useEffect(() => {
     if (gameState.currentRealm) {
       localStorage.setItem(SAVE_KEY, JSON.stringify(gameState));
+      
+      if (user) {
+        const path = `users/${user.uid}`;
+        const saveToFirestore = async () => {
+          try {
+            await setDoc(doc(db, 'users', user.uid), {
+              uid: user.uid,
+              email: user.email,
+              gameState: gameState,
+              subscription: {
+                tier: gameState.subscription.tier,
+                status: gameState.subscription.status,
+                stripeCustomerId: gameState.subscription.stripeCustomerId || '',
+                updatedAt: new Date().toISOString()
+              },
+              updatedAt: serverTimestamp()
+            });
+          } catch (error) {
+            handleFirestoreError(error, OperationType.WRITE, path);
+          }
+        };
+        saveToFirestore();
+      }
     }
-  }, [gameState]);
+  }, [gameState, user]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -327,7 +544,37 @@ export default function App() {
             memory: []
           },
           subscription: gameState.subscription, // Keep subscription
-          aiResponses: []
+          aiResponses: [],
+          tasks: [
+            { id: 'arrival', title: 'Island Arrival', description: 'Reach your first destination on Hatteras Island.', completed: false, reward: 50 },
+            { id: 'neural', title: 'Neural Link', description: 'Establish a connection with the island\'s AI.', completed: false, reward: 100 },
+            { id: 'scavenger', title: 'Scavenger', description: 'Find your first piece of gear.', completed: false, reward: 75 }
+          ],
+          weather: 'clear',
+          tide: 'low',
+          lighthouse: {
+            level: 1,
+            upgrades: [],
+            lastVisited: Date.now(),
+            signalRange: 1,
+            storageCapacity: 1,
+            defenseLevel: 1,
+            energyEfficiency: 1
+          },
+          faction: 'none',
+          factionReputation: 0,
+          surfingGame: {
+            isActive: false,
+            score: 0,
+            multiplier: 1,
+            distance: 0
+          },
+          business: {
+            revenue: 0,
+            activeClients: 0,
+            workflowsSold: 0,
+            reputation: 0
+          }
         });
       } catch (error) {
         console.error("Reset failed:", error);
@@ -335,6 +582,29 @@ export default function App() {
         setLoading(false);
       }
     }
+  };
+
+  const toggleTask = (taskId: string) => {
+    setGameState(prev => {
+      const task = prev.tasks.find(t => t.id === taskId);
+      if (task && !task.completed) {
+        // Add reward if completing for the first time
+        return {
+          ...prev,
+          sandDollars: prev.sandDollars + (task.reward || 0),
+          history: [`> OBJECTIVE_COMPLETE: ${task.title} (+${task.reward} SD)`, ...prev.history],
+          tasks: prev.tasks.map(t => 
+            t.id === taskId ? { ...t, completed: true } : t
+          )
+        };
+      }
+      return {
+        ...prev,
+        tasks: prev.tasks.map(t => 
+          t.id === taskId ? { ...t, completed: !t.completed } : t
+        )
+      };
+    });
   };
 
   const handleAction = async (option: { label: string, action: string }) => {
@@ -349,6 +619,7 @@ export default function App() {
     try {
       const paths = await generateBranchingPaths(gameState.currentRealm, option.action, gameState.inventory, gameState.activeEvents, gameState.aiStatus.stage);
       setBranchingPaths(paths);
+      setTransitioning(false);
     } catch (error) {
       console.error("Branching failed:", error);
       // Fallback to direct generation if branching fails
@@ -361,7 +632,7 @@ export default function App() {
         }
 
         // Update events: decrement duration and filter out expired
-        const updatedEvents = prev.activeEvents
+        const updatedEvents = (prev.activeEvents || [])
           .map(e => ({ ...e, duration: e.duration - 1 }))
           .filter(e => e.duration > 0);
 
@@ -587,7 +858,7 @@ export default function App() {
       const { defense } = prev.playerStats;
 
       // Enhanced AI Logic
-      const recentActions = playerActionHistory.slice(-3);
+      const recentActions = (playerActionHistory || []).slice(-3);
       const attackCount = recentActions.filter(a => a === 'attack').length;
       const defendCount = recentActions.filter(a => a === 'defend').length;
       
@@ -645,8 +916,9 @@ export default function App() {
   };
 
   const handleSelectPath = async (path: BranchingPath) => {
-    if (!gameState.currentRealm) return;
+    if (!gameState.currentRealm || transitioning) return;
     
+    setTransitioning(true);
     setBranchingPaths(null);
     try {
       const next = await generateNextRealm(gameState.currentRealm, path.title, gameState.inventory, gameState.activeEvents, gameState.aiStatus.stage, path);
@@ -674,7 +946,7 @@ export default function App() {
         }
 
         // Update events: decrement duration and filter out expired
-        let updatedEvents = prev.activeEvents
+        let updatedEvents = (prev.activeEvents || [])
           .map(e => ({ ...e, duration: e.duration - 1 }))
           .filter(e => e.duration > 0);
         
@@ -781,6 +1053,28 @@ export default function App() {
     }
   };
 
+  const handleListen = async (text: string) => {
+    if (playingAudio) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        setPlayingAudio(null);
+      }
+      return;
+    }
+
+    try {
+      const audioUrl = await generateSpeech(text);
+      setPlayingAudio(text);
+      if (audioRef.current) {
+        audioRef.current.src = audioUrl;
+        audioRef.current.play();
+        audioRef.current.onended = () => setPlayingAudio(null);
+      }
+    } catch (error) {
+      console.error("Speech generation failed:", error);
+    }
+  };
+
   const handleGenerateLore = async () => {
     if (!gameState.currentRealm || loreLoading) return;
     
@@ -810,7 +1104,7 @@ export default function App() {
       }
       return {
         ...prev,
-        inventory: prev.inventory.filter(i => i.id !== itemId),
+        inventory: (prev.inventory || []).filter(i => i.id !== itemId),
         playerStats: newPlayerStats,
         history: [...prev.history, `Used: ${item.name}. ${item.effect || 'The artifact hums with island energy.'}${item.type === 'data_fragment' ? ' Restored 20 Island Harmony.' : ''}`],
         aiStatus: {
@@ -827,7 +1121,7 @@ export default function App() {
 
     setGameState(prev => ({
       ...prev,
-      inventory: prev.inventory.filter(i => i.id !== itemId),
+      inventory: (prev.inventory || []).filter(i => i.id !== itemId),
       history: [...prev.history, `Dropped: ${item.name}. It dissolves into the digital void.`]
     }));
   };
@@ -859,13 +1153,19 @@ export default function App() {
   const handleUpgrade = async (tier: typeof TIERS[0]) => {
     setCheckoutLoading(tier.id);
     try {
-      const response = await fetch('/api/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tierId: tier.id, userEmail: user?.email })
-      });
-      const { url } = await response.json();
-      if (url) window.location.href = url;
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      setGameState(prev => ({
+        ...prev,
+        subscription: {
+          tier: tier.id as SubscriptionTier,
+          status: 'active'
+        },
+        history: [...prev.history, `Subscription Initialized: ${tier.name} Tier Active.`]
+      }));
+      
+      setShowPricing(false);
     } catch (error) {
       console.error("Upgrade failed:", error);
     } finally {
@@ -911,11 +1211,17 @@ export default function App() {
     }
   };
 
-  const handleImageGen = async () => {
+  const handleImageGen = async (aspectRatio: any = '1:1') => {
     if (!imagePrompt.trim() || genLoading) return;
+    
+    if (!hasPaidKey) {
+      setShowApiKeySelector(true);
+      return;
+    }
+
     setGenLoading(true);
     try {
-      const imageUrl = await generateImageFromText(imagePrompt);
+      const imageUrl = await generateImageFromText(imagePrompt, aspectRatio);
       const aiMsg: AIResponse = {
         id: Date.now().toString(),
         type: 'image',
@@ -934,6 +1240,12 @@ export default function App() {
 
   const handleVideoGen = async () => {
     if (!videoPrompt.trim() || !analysisFile || genLoading) return;
+    
+    if (!hasPaidKey) {
+      setShowApiKeySelector(true);
+      return;
+    }
+
     setGenLoading(true);
     try {
       const videoUrl = await generateVideoFromImage(analysisFile, videoPrompt);
@@ -971,6 +1283,98 @@ export default function App() {
       console.error("Analysis failed:", error);
     } finally {
       setAnalysisLoading(false);
+    }
+  };
+
+  const handleSearchGrounding = async () => {
+    if (!mapsInput.trim() || searchLoading) return;
+    setSearchLoading(true);
+    try {
+      const { text, links } = await getSearchGroundingResponse(mapsInput);
+      const aiMsg: AIResponse = {
+        id: Date.now().toString(),
+        type: 'maps',
+        content: text,
+        timestamp: Date.now(),
+        metadata: { sender: 'ai', links, search: true }
+      };
+      setGameState(prev => ({ ...prev, aiResponses: [...prev.aiResponses, aiMsg] }));
+      setMapsInput('');
+    } catch (error) {
+      console.error("Search grounding failed:", error);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const handleEditImage = async () => {
+    if (!imageEditPrompt.trim() || !analysisFile || genLoading) return;
+    
+    if (!hasPaidKey) {
+      setShowApiKeySelector(true);
+      return;
+    }
+
+    setGenLoading(true);
+    try {
+      const imageUrl = await editImage(analysisFile, imageEditPrompt);
+      const aiMsg: AIResponse = {
+        id: Date.now().toString(),
+        type: 'image',
+        content: imageUrl,
+        timestamp: Date.now(),
+        metadata: { prompt: imageEditPrompt, sender: 'ai', edited: true }
+      };
+      setGameState(prev => ({ ...prev, aiResponses: [...prev.aiResponses, aiMsg] }));
+      setImageEditPrompt('');
+    } catch (error) {
+      console.error("Image edit failed:", error);
+    } finally {
+      setGenLoading(false);
+    }
+  };
+
+  const handleLiveAudio = async () => {
+    if (liveSession) {
+      liveSession.close();
+      setLiveSession(null);
+      return;
+    }
+
+    if (!hasPaidKey) {
+      setShowApiKeySelector(true);
+      return;
+    }
+
+    try {
+      const session = await getLiveAudioSession({
+        onopen: () => {
+          console.log("Live session opened");
+          setLiveTranscript(prev => [...prev, "System: Live Neural Link Established."]);
+        },
+        onmessage: (message: any) => {
+          if (message.serverContent?.modelTurn?.parts?.[0]?.text) {
+            const text = message.serverContent.modelTurn.parts[0].text;
+            setLiveTranscript(prev => [...prev, `AI: ${text}`]);
+          }
+          if (message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data) {
+            const base64Audio = message.serverContent.modelTurn.parts[0].inlineData.data;
+            // Play audio logic here
+          }
+        },
+        onclose: () => {
+          console.log("Live session closed");
+          setLiveTranscript(prev => [...prev, "System: Live Neural Link Terminated."]);
+          setLiveSession(null);
+        },
+        onerror: (error: any) => {
+          console.error("Live session error:", error);
+          setLiveSession(null);
+        }
+      });
+      setLiveSession(session);
+    } catch (error) {
+      console.error("Failed to connect to Live API:", error);
     }
   };
 
@@ -1085,6 +1489,7 @@ export default function App() {
   }
 
   return (
+    <ErrorBoundary>
     <div className="min-h-screen bg-[#050505] text-[#E0E0E0] font-sans selection:bg-[#00E0FF] selection:text-black overflow-hidden flex flex-col">
       {showMemorial ? (
         <Memorial onBack={() => setShowMemorial(false)} />
@@ -1131,6 +1536,14 @@ export default function App() {
               title="AI Lab"
             >
               <Brain size={16} />
+            </button>
+            <button 
+              onClick={() => setShowFounders(true)}
+              className="p-2 rounded-lg bg-white/5 border border-white/10 hover:bg-[#00E0FF]/10 hover:border-[#00E0FF]/30 transition-all text-[#00E0FF]/70 hover:text-[#00E0FF] flex items-center gap-2"
+              title="The Founders"
+            >
+              <Users size={16} />
+              <span className="text-[10px] font-mono hidden md:inline">Founders</span>
             </button>
             <button 
               onClick={() => setShowSkills(true)}
@@ -1207,6 +1620,20 @@ export default function App() {
               <Package size={14} />
               <span className="text-[10px] font-mono uppercase tracking-wider">Gear ({gameState.inventory.length})</span>
             </button>
+            <button 
+              onClick={() => setActiveTab('tasks')}
+              className={`flex-1 p-4 flex items-center justify-center gap-2 transition-colors ${activeTab === 'tasks' ? 'bg-[#00E0FF]/10 text-[#00E0FF]' : 'text-white/40 hover:text-white/60'}`}
+            >
+              <CheckCircle2 size={14} />
+              <span className="text-[10px] font-mono uppercase tracking-wider">Tasks ({(gameState.tasks || []).filter(t => !t.completed).length})</span>
+            </button>
+            <button 
+              onClick={() => setActiveTab('hub')}
+              className={`flex-1 p-4 flex items-center justify-center gap-2 transition-colors ${activeTab === 'hub' ? 'bg-[#00E0FF]/10 text-[#00E0FF]' : 'text-white/40 hover:text-white/60'}`}
+            >
+              <Globe size={14} />
+              <span className="text-[10px] font-mono uppercase tracking-wider">Hub</span>
+            </button>
           </div>
 
           <div className="flex-1 overflow-hidden flex flex-col">
@@ -1231,7 +1658,7 @@ export default function App() {
                     </div>
                   )}
                 </motion.div>
-              ) : (
+              ) : activeTab === 'inventory' ? (
                 <motion.div 
                   key="inventory"
                   initial={{ opacity: 0, x: 10 }}
@@ -1288,8 +1715,198 @@ export default function App() {
                     ))
                   )}
                 </motion.div>
+              ) : activeTab === 'hub' ? (
+                <motion.div 
+                  key="hub"
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 10 }}
+                  className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide"
+                >
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-mono uppercase text-white/20 tracking-widest block">Commercial Operations</span>
+                    <button 
+                      onClick={() => setShowBusinessDashboard(true)}
+                      className="w-full p-4 rounded-2xl bg-[#00FF00]/5 border border-[#00FF00]/20 hover:border-[#00FF00]/50 hover:bg-[#00FF00]/10 transition-all flex items-center gap-4 group"
+                    >
+                      <div className="p-3 rounded-xl bg-[#00FF00]/10 text-[#00FF00] group-hover:scale-110 transition-transform">
+                        <TrendingUp size={20} />
+                      </div>
+                      <div className="text-left">
+                        <div className="text-xs font-bold text-white uppercase tracking-wider">Business Dashboard</div>
+                        <div className="text-[10px] font-mono text-[#00FF00]/60 uppercase">Revenue: ${gameState.business.revenue.toLocaleString()}</div>
+                      </div>
+                    </button>
+                    <button 
+                      onClick={() => setShowSalesCenter(true)}
+                      className={`w-full p-4 rounded-2xl transition-all flex items-center gap-4 group relative overflow-hidden ${
+                        gameState.subscription.status === 'active'
+                        ? 'bg-[#00E0FF]/10 border border-[#00E0FF]/40 hover:border-[#00E0FF]/60'
+                        : 'bg-[#00E0FF]/5 border border-[#00E0FF]/20 hover:border-[#00E0FF]/50 hover:bg-[#00E0FF]/10'
+                      }`}
+                    >
+                      {gameState.subscription.status === 'active' && (
+                        <motion.div
+                          animate={{ 
+                            scale: [1, 1.2, 1],
+                            opacity: [0.1, 0.2, 0.1]
+                          }}
+                          transition={{ duration: 4, repeat: Infinity }}
+                          className="absolute inset-0 bg-gradient-to-r from-transparent via-[#00E0FF]/20 to-transparent"
+                        />
+                      )}
+                      <div className={`p-3 rounded-xl transition-transform group-hover:scale-110 ${
+                        gameState.subscription.status === 'active' ? 'bg-[#00E0FF]/20 text-[#00E0FF]' : 'bg-[#00E0FF]/10 text-[#00E0FF]'
+                      }`}>
+                        {gameState.subscription.status === 'active' ? <Shield size={20} /> : <Rocket size={20} />}
+                      </div>
+                      <div className="text-left relative z-10">
+                        <div className="text-xs font-bold text-white uppercase tracking-wider">
+                          {gameState.subscription.status === 'active' ? 'Neural Infrastructure' : 'Sales & Infrastructure'}
+                        </div>
+                        <div className={`text-[10px] font-mono uppercase ${
+                          gameState.subscription.status === 'active' ? 'text-[#00E0FF]' : 'text-[#00E0FF]/60'
+                        }`}>
+                          {gameState.subscription.status === 'active' ? `Active Plan: ${gameState.subscription.tier}` : 'View Plans & Features'}
+                        </div>
+                      </div>
+                      {gameState.subscription.status === 'active' && (
+                        <div className="ml-auto">
+                          <CheckCircle2 size={16} className="text-[#00FF00]" />
+                        </div>
+                      )}
+                    </button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-mono uppercase text-white/20 tracking-widest block">Island Infrastructure</span>
+                    <button 
+                      onClick={() => setShowLighthouse(true)}
+                      className="w-full p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-[#00E0FF]/30 hover:bg-[#00E0FF]/5 transition-all flex items-center gap-4 group"
+                    >
+                      <div className="p-3 rounded-xl bg-[#00E0FF]/10 text-[#00E0FF] group-hover:scale-110 transition-transform">
+                        <Anchor size={20} />
+                      </div>
+                      <div className="text-left">
+                        <div className="text-xs font-bold text-white uppercase tracking-wider">The Lighthouse</div>
+                        <div className="text-[10px] font-mono text-white/40 uppercase">Base Operations & Upgrades</div>
+                      </div>
+                    </button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-mono uppercase text-white/20 tracking-widest block">Neural Alignment</span>
+                    <button 
+                      onClick={() => setShowFactionSelection(true)}
+                      className="w-full p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-[#FF4444]/30 hover:bg-[#FF4444]/5 transition-all flex items-center gap-4 group"
+                    >
+                      <div className="p-3 rounded-xl bg-[#FF4444]/10 text-[#FF4444] group-hover:scale-110 transition-transform">
+                        <Shield size={20} />
+                      </div>
+                      <div className="text-left">
+                        <div className="text-xs font-bold text-white uppercase tracking-wider">Faction Alignment</div>
+                        <div className="text-[10px] font-mono text-white/40 uppercase">
+                          {gameState.faction ? `Aligned: ${gameState.faction.toUpperCase()}` : 'No Alignment Detected'}
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-mono uppercase text-white/20 tracking-widest block">Island Recreation</span>
+                    <button 
+                      onClick={() => setShowSurfingGame(true)}
+                      className="w-full p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-[#00FF00]/30 hover:bg-[#00FF00]/5 transition-all flex items-center gap-4 group"
+                    >
+                      <div className="p-3 rounded-xl bg-[#00FF00]/10 text-[#00FF00] group-hover:scale-110 transition-transform">
+                        <Waves size={20} />
+                      </div>
+                      <div className="text-left">
+                        <div className="text-xs font-bold text-white uppercase tracking-wider">Surf the Data Stream</div>
+                        <div className="text-[10px] font-mono text-white/40 uppercase">Earn Sand Dollars</div>
+                      </div>
+                    </button>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-mono uppercase text-white/40 tracking-widest">Environment Status</span>
+                      <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#00E0FF] animate-pulse" />
+                        <span className="text-[10px] font-mono text-[#00E0FF] uppercase">Live</span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <div className="text-[8px] font-mono uppercase text-white/20">Current Weather</div>
+                        <div className="text-xs font-bold text-white uppercase tracking-wider">{gameState.weather}</div>
+                      </div>
+                      <div className="space-y-1 text-right">
+                        <div className="text-[8px] font-mono uppercase text-white/20">Tide Level</div>
+                        <div className="text-xs font-bold text-white uppercase tracking-wider">{gameState.tide}</div>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div 
+                  key="tasks"
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 10 }}
+                  className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-hide"
+                >
+                  {gameState.tasks.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full text-white/20 text-center p-8">
+                      <CheckCircle2 size={32} className="mb-4 opacity-20" />
+                      <p className="text-[10px] font-mono uppercase tracking-widest">No Objectives</p>
+                    </div>
+                  ) : (
+                    gameState.tasks.map((task) => (
+                      <button 
+                        key={task.id}
+                        onClick={() => toggleTask(task.id)}
+                        className={`w-full p-4 rounded-xl border transition-all text-left space-y-2 group ${
+                          task.completed 
+                            ? 'bg-[#00FF00]/5 border-[#00FF00]/20 opacity-60' 
+                            : 'bg-white/5 border-white/10 hover:border-[#00E0FF]/30'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1">
+                            <div className={`text-xs font-bold transition-colors ${task.completed ? 'text-[#00FF00] line-through' : 'text-white group-hover:text-[#00E0FF]'}`}>
+                              {task.title}
+                            </div>
+                            <p className={`text-[10px] leading-relaxed ${task.completed ? 'text-[#00FF00]/40' : 'text-white/40'}`}>
+                              {task.description}
+                            </p>
+                          </div>
+                          <div className={`mt-0.5 transition-colors ${task.completed ? 'text-[#00FF00]' : 'text-white/20 group-hover:text-[#00E0FF]/50'}`}>
+                            {task.completed ? <CheckCircle2 size={16} /> : <Circle size={16} />}
+                          </div>
+                        </div>
+                        {task.reward && !task.completed && (
+                          <div className="text-[8px] font-mono text-[#FFD700]/60 uppercase tracking-widest">
+                            Reward: {task.reward} Sand Dollars
+                          </div>
+                        )}
+                      </button>
+                    ))
+                  )}
+                </motion.div>
               )}
             </AnimatePresence>
+
+            {/* Email Intake Form */}
+            <div className="p-4 pt-0">
+              <div className="p-6 rounded-3xl bg-[#00E0FF]/5 border border-[#00E0FF]/10 space-y-4">
+                <div className="flex items-center gap-3 text-[#00E0FF]">
+                  <Mail size={18} />
+                  <h4 className="text-xs font-bold uppercase tracking-widest">Neural Updates</h4>
+                </div>
+                <EmailIntake source="sidebar_main" />
+              </div>
+            </div>
           </div>
         </aside>
 
@@ -1299,9 +1916,10 @@ export default function App() {
             {gameState.currentRealm && (
               <motion.div
                 key={gameState.currentRealm.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
+                initial={{ opacity: 0, x: 20, filter: 'blur(10px)' }}
+                animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
+                exit={{ opacity: 0, x: -20, filter: 'blur(10px)' }}
+                transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
                 className="max-w-3xl w-full space-y-8"
               >
                 {/* Branching Paths Overlay */}
@@ -1331,10 +1949,16 @@ export default function App() {
                           animate={{ x: 0, opacity: 1 }}
                           transition={{ delay: i * 0.1 }}
                           onClick={() => handleSelectPath(path)}
-                          className="group relative p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-[#00E0FF]/50 hover:bg-[#00E0FF]/5 text-left transition-all"
+                          disabled={transitioning}
+                          className="group relative p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-[#00E0FF]/50 hover:bg-[#00E0FF]/5 text-left transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <div className="flex justify-between items-start mb-2">
-                            <h4 className="text-lg font-bold text-white group-hover:text-[#00E0FF] transition-colors uppercase tracking-tight">{path.title}</h4>
+                            <div className="flex items-center gap-3">
+                              {transitioning && (
+                                <Loader2 size={16} className="text-[#00E0FF] animate-spin" />
+                              )}
+                              <h4 className="text-lg font-bold text-white group-hover:text-[#00E0FF] transition-colors uppercase tracking-tight">{path.title}</h4>
+                            </div>
                             <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${
                               path.riskLevel === 'critical' ? 'border-red-500 text-red-500 bg-red-500/10' :
                               path.riskLevel === 'high' ? 'border-orange-500 text-orange-500 bg-orange-500/10' :
@@ -1400,11 +2024,99 @@ export default function App() {
                   )}
                 </div>
 
-                <p className="text-lg md:text-xl text-white/80 leading-relaxed font-light italic">
-                  "{gameState.currentRealm.description}"
-                </p>
+                <div className="relative group/desc">
+                  <div className="absolute -left-8 top-0 opacity-0 group-hover/desc:opacity-100 transition-opacity duration-500">
+                    <Sparkles size={20} className="text-[#00E0FF] animate-pulse" />
+                  </div>
+                  <p className="text-lg md:text-xl text-white/80 leading-relaxed font-light italic pr-12 group-hover/desc:text-white transition-colors duration-500">
+                    "{gameState.currentRealm.description}"
+                  </p>
+                  <div className="absolute -right-4 bottom-0 opacity-0 group-hover/desc:opacity-100 transition-opacity duration-500 delay-100">
+                    <Activity size={16} className="text-[#00E0FF]/40" />
+                  </div>
+                  <button
+                    onClick={() => handleListen(gameState.currentRealm!.description)}
+                    className={`absolute right-0 top-1/2 -translate-y-1/2 p-3 rounded-full transition-all ${
+                      playingAudio === gameState.currentRealm.description
+                        ? 'bg-[#00E0FF] text-black animate-pulse'
+                        : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-[#00E0FF]'
+                    }`}
+                    title="Listen to Island Soul"
+                  >
+                    {playingAudio === gameState.currentRealm.description ? <VolumeX size={20} /> : <Volume2 size={20} />}
+                  </button>
+                </div>
 
                 <div className="pt-8 space-y-4">
+                  {gameState.currentRealm.npc && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="p-6 rounded-3xl bg-[#00E0FF]/5 border border-[#00E0FF]/20 space-y-6"
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className="p-4 rounded-2xl bg-black/40 border border-[#00E0FF]/20 text-[#00E0FF]">
+                          <Users size={24} />
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-xl font-bold text-white uppercase tracking-tighter">{gameState.currentRealm.npc.name}</h4>
+                            <span className="text-[10px] font-mono text-[#00E0FF] uppercase tracking-widest px-2 py-0.5 rounded border border-[#00E0FF]/30 bg-[#00E0FF]/5">
+                              {gameState.currentRealm.npc.role}
+                            </span>
+                          </div>
+                          <p className="text-sm text-white/60 leading-relaxed italic">
+                            "{gameState.currentRealm.npc.description}"
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <span className="text-[10px] font-mono uppercase text-white/20 tracking-widest block">Dialogue Stream</span>
+                        <div className="p-4 rounded-xl bg-black/40 border border-white/5 text-sm text-white/80 italic leading-relaxed relative group/dialogue">
+                          "{gameState.currentRealm.npc.dialogue[0]}"
+                          <button
+                            onClick={() => handleListen(gameState.currentRealm!.npc!.dialogue[0])}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/5 text-white/40 hover:bg-[#00E0FF]/10 hover:text-[#00E0FF] transition-all opacity-0 group-hover/dialogue:opacity-100"
+                          >
+                            <Volume2 size={16} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {gameState.currentRealm.npc.trades && gameState.currentRealm.npc.trades.length > 0 && (
+                        <div className="space-y-3">
+                          <span className="text-[10px] font-mono uppercase text-white/20 tracking-widest block">Available Exchanges</span>
+                          <div className="grid grid-cols-1 gap-2">
+                            {gameState.currentRealm.npc.trades.map((trade, i) => (
+                              <button
+                                key={i}
+                                onClick={() => {
+                                  const hasItem = gameState.inventory.some(item => item.id === trade.input || item.name === trade.input);
+                                  if (hasItem) {
+                                    setGameState(prev => ({
+                                      ...prev,
+                                      inventory: [...(prev.inventory || []).filter(item => item.id !== trade.input && item.name !== trade.input), trade.output],
+                                      history: [...prev.history, `Trade: Exchanged ${trade.input} for ${trade.output.name} with ${gameState.currentRealm!.npc!.name}.`]
+                                    }));
+                                  }
+                                }}
+                                className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10 hover:border-[#00E0FF]/40 hover:bg-[#00E0FF]/5 transition-all group"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="text-[10px] font-mono text-white/40 uppercase">Give: <span className="text-white">{trade.input}</span></div>
+                                  <ArrowRight size={12} className="text-white/20 group-hover:text-[#00E0FF] transition-colors" />
+                                  <div className="text-[10px] font-mono text-white/40 uppercase">Receive: <span className="text-[#00E0FF]">{trade.output.name}</span></div>
+                                </div>
+                                <ChevronRight size={14} className="text-white/20 group-hover:text-[#00E0FF] transition-transform" />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+
                   <span className="text-[10px] font-mono uppercase text-[#00E0FF]/50 tracking-widest block">Available Pathways</span>
                   <div className="grid grid-cols-1 gap-3">
                     {gameState.currentRealm.options.map((option, i) => (
@@ -1416,9 +2128,15 @@ export default function App() {
                       >
                         <div className="flex items-center gap-4">
                           <div className="p-2 rounded-lg bg-black/40 group-hover:bg-[#00E0FF]/20 transition-colors">
-                            {option.targetType === 'explore' && <Compass size={18} className="text-[#00E0FF]" />}
-                            {option.targetType === 'interact' && <Waves size={18} className="text-[#00E0FF]" />}
-                            {option.targetType === 'analyze' && <Anchor size={18} className="text-[#00E0FF]" />}
+                            {transitioning ? (
+                              <Loader2 size={18} className="text-[#00E0FF] animate-spin" />
+                            ) : (
+                              <>
+                                {option.targetType === 'explore' && <Compass size={18} className="text-[#00E0FF]" />}
+                                {option.targetType === 'interact' && <Waves size={18} className="text-[#00E0FF]" />}
+                                {option.targetType === 'analyze' && <Anchor size={18} className="text-[#00E0FF]" />}
+                              </>
+                            )}
                           </div>
                           <div>
                             <div className="text-sm font-bold group-hover:text-[#00E0FF] transition-colors">{option.label}</div>
@@ -2123,7 +2841,7 @@ export default function App() {
 
                 {/* Logs */}
                 <div className="flex-1 p-6 overflow-y-auto font-mono text-[11px] space-y-2 scrollbar-hide">
-                  {gameState.combat.logs
+                  {(gameState.combat.logs || [])
                     .filter(log => combatLogFilter === 'all' || log.type === combatLogFilter)
                     .map((log, i) => (
                     <motion.div 
@@ -2203,6 +2921,107 @@ export default function App() {
       <AmbientAudio isMemorialOpen={showMemorial} />
       
       <AnimatePresence>
+        {showFounders && (
+          <Founders onBack={() => setShowFounders(false)} />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showSubscriptionSuccess && (
+          <SubscriptionSuccess 
+            plan={showSubscriptionSuccess.plan}
+            onClose={() => setShowSubscriptionSuccess(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showSalesCenter && (
+          <SalesCenter 
+            onClose={() => setShowSalesCenter(false)}
+            currentTier={gameState.subscription.tier}
+            userEmail={user?.email}
+            stripeCustomerId={gameState.subscription.stripeCustomerId}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showBusinessDashboard && (
+          <BusinessDashboard 
+            gameState={gameState}
+            onClose={() => setShowBusinessDashboard(false)}
+            onUpdateBusiness={(update) => setGameState(prev => ({
+              ...prev,
+              business: { ...prev.business, ...update }
+            }))}
+            onLog={(msg) => setGameState(prev => ({
+              ...prev,
+              history: [...prev.history, `> ${msg}`]
+            }))}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showLighthouse && (
+          <Lighthouse 
+            gameState={gameState}
+            onUpgrade={(upgrade) => {
+              setGameState(prev => {
+                const newLighthouse = { ...prev.lighthouse };
+                if (upgrade.id === 'signal') newLighthouse.signalRange += 1;
+                if (upgrade.id === 'storage') newLighthouse.storageCapacity += 1;
+                if (upgrade.id === 'defense') newLighthouse.defenseLevel += 1;
+                if (upgrade.id === 'energy') newLighthouse.energyEfficiency += 1;
+                
+                return {
+                  ...prev,
+                  sandDollars: prev.sandDollars - upgrade.cost,
+                  lighthouse: newLighthouse,
+                  history: [...prev.history, `Lighthouse Upgrade: ${upgrade.name} installed.`]
+                };
+              });
+            }}
+            onClose={() => setShowLighthouse(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showFactionSelection && (
+          <FactionSelection 
+            onSelect={(faction) => {
+              setGameState(prev => ({
+                ...prev,
+                faction,
+                showFactionSelection: false,
+                history: [...prev.history, `System: Faction alignment set to ${faction.toUpperCase()}.`]
+              }));
+              setShowFactionSelection(false);
+            }}
+            onClose={() => setShowFactionSelection(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showSurfingGame && (
+          <SurfingGame 
+            onComplete={(score) => {
+              setGameState(prev => ({
+                ...prev,
+                sandDollars: prev.sandDollars + score,
+                history: [...prev.history, `Surfing Session: Earned ${score} Sand Dollars.`]
+              }));
+              setShowSurfingGame(false);
+            }}
+            onClose={() => setShowSurfingGame(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {showAILab && (
           <AILab 
             isOpen={showAILab}
@@ -2232,6 +3051,14 @@ export default function App() {
             setMapsInput={setMapsInput}
             mapsLoading={mapsLoading}
             handleMapsGrounding={handleMapsGrounding}
+            handleSearchGrounding={handleSearchGrounding}
+            searchLoading={searchLoading}
+            imageEditPrompt={imageEditPrompt}
+            setImageEditPrompt={setImageEditPrompt}
+            handleEditImage={handleEditImage}
+            handleLiveAudio={handleLiveAudio}
+            liveSession={liveSession}
+            liveTranscript={liveTranscript}
             thinkingMode={thinkingMode}
             setThinkingMode={setThinkingMode}
             isRecording={isRecording}
@@ -2242,6 +3069,7 @@ export default function App() {
             audioRef={audioRef}
             onOpenApiKeySelector={() => setShowApiKeySelector(true)}
             setAnalysisFile={setAnalysisFile}
+            hasPaidKey={hasPaidKey}
           />
         )}
       </AnimatePresence>
@@ -2249,7 +3077,12 @@ export default function App() {
       <ApiKeySelector 
         isOpen={showApiKeySelector}
         onClose={() => setShowApiKeySelector(false)}
+        onKeySelected={() => {
+          setShowApiKeySelector(false);
+          setHasPaidKey(true);
+        }}
       />
     </div>
+    </ErrorBoundary>
   );
 }

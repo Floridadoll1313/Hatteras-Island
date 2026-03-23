@@ -32,10 +32,40 @@ service cloud.firestore {
              data.timestamp is timestamp;
     }
 
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'gameState', 'updatedAt']) &&
+             data.uid == request.auth.uid &&
+             data.updatedAt is timestamp &&
+             (!('subscription' in data) || (
+               data.subscription.keys().hasAll(['tier', 'status', 'updatedAt']) &&
+               data.subscription.tier is string &&
+               data.subscription.status is string &&
+               data.subscription.updatedAt is string &&
+               (!('stripeCustomerId' in data.subscription) || data.subscription.stripeCustomerId is string)
+             ));
+    }
+
+    function isValidLead(data) {
+      return data.keys().hasAll(['email', 'timestamp']) &&
+             data.email is string && isValidEmail(data.email) &&
+             data.timestamp is timestamp &&
+             (!('source' in data) || data.source is string);
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId) && isValidUser(request.resource.data);
+    }
+
     match /comments/{commentId} {
       allow read: if true; // Publicly readable
       allow create: if isAuthenticated() && isValidComment(request.resource.data);
       allow update, delete: if isOwner(resource.data.authorUid);
+    }
+
+    match /leads/{leadId} {
+      allow create: if isValidLead(request.resource.data);
+      allow read, update, delete: if false; // Only admin can read/manage (not implemented here)
     }
   }
 }

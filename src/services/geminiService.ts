@@ -1,8 +1,21 @@
 import { GoogleGenAI, Type, ThinkingLevel, Modality } from "@google/genai";
 import { RealmNode, BranchingPath, InventoryItem, WorldEvent, AIStage, Enemy } from "../types";
 
-const getApiKey = () => process.env.GEMINI_API_KEY || "";
-const getPaidApiKey = () => process.env.API_KEY || getApiKey();
+const getApiKey = () => {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) {
+    console.warn("GEMINI_API_KEY is missing from environment.");
+  }
+  return key || "";
+};
+
+const getPaidApiKey = () => {
+  const key = process.env.API_KEY || getApiKey();
+  if (!key) {
+    console.warn("Neither API_KEY nor GEMINI_API_KEY is available.");
+  }
+  return key;
+};
 
 const branchingPathSchema = {
   type: Type.ARRAY,
@@ -25,7 +38,7 @@ const itemSchema = {
     id: { type: Type.STRING },
     name: { type: Type.STRING },
     description: { type: Type.STRING },
-    type: { type: Type.STRING, enum: ['artifact', 'tool', 'data_fragment'] },
+    type: { type: Type.STRING, enum: ['artifact', 'tool', 'data_fragment', 'material'] },
     rarity: { type: Type.STRING, enum: ['common', 'rare', 'exotic', 'legendary'] },
     effect: { type: Type.STRING },
     passiveBonus: { type: Type.STRING, description: "A passive effect this item provides while in inventory. E.g. '+15% Legacy Evolution Speed', 'Unlocks Coastal Markers', 'Reduces Island Resonance Latency'." }
@@ -46,6 +59,29 @@ const enemySchema = {
     abilities: { type: Type.ARRAY, items: { type: Type.STRING } }
   },
   required: ['id', 'name', 'description', 'health', 'maxHealth', 'attack', 'defense', 'abilities']
+};
+
+const npcSchema = {
+  type: Type.OBJECT,
+  properties: {
+    id: { type: Type.STRING },
+    name: { type: Type.STRING },
+    role: { type: Type.STRING },
+    description: { type: Type.STRING },
+    dialogue: { type: Type.ARRAY, items: { type: Type.STRING } },
+    trades: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          input: { type: Type.STRING, description: "The ID or name of the item the NPC wants." },
+          output: itemSchema
+        },
+        required: ['input', 'output']
+      }
+    }
+  },
+  required: ['id', 'name', 'role', 'description', 'dialogue']
 };
 
 const realmSchema = {
@@ -71,6 +107,7 @@ const realmSchema = {
     lore: { type: Type.STRING },
     item: itemSchema,
     enemy: enemySchema,
+    npc: npcSchema,
     imagePrompt: { type: Type.STRING, description: "A detailed visual prompt for generating an image of this realm. Use a futuristic, digital, AI-centric aesthetic." }
   },
   required: ['id', 'name', 'description', 'environment', 'entities', 'options', 'lore', 'imagePrompt']
@@ -179,8 +216,9 @@ export async function generateNextRealm(currentRealm: RealmNode, action: string,
     Maintain the OBX/Coastal theme. The environment should reflect the traveler's increasing connection to the island as they move through stages.
     Current Stage: ${aiStage}.
     IMPORTANT: If the location is Salvo, it must feature a memorial for Bull Hooper.
-    Occasionally (30% chance) include a discoverable item (maritime artifact, local tool).
-    Occasionally (25% chance) include a challenge (hostile entity like a Storm Surge, Rogue Wave, or Ghost Crab) that the player must confront. Challenges should have stats (health, attack, defense) scaled to the player's potential progress and current stage.`,
+    Occasionally (30% chance) include a discoverable item (maritime artifact, local tool, or raw material like 'Scrap Metal' or 'Data Shard').
+    Occasionally (20% chance) include a challenge (hostile entity like a Storm Surge, Rogue Wave, or Ghost Crab).
+    Occasionally (25% chance) include an Island Inhabitant (NPC) like a 'Lost Surfer', 'Digital Spirit', or 'Surf Shop Owner' who can offer lore or trades.`,
     config: {
       responseMimeType: "application/json",
       responseSchema: realmSchema
@@ -284,10 +322,10 @@ export async function generateVideoFromImage(base64Image: string, prompt: string
   return URL.createObjectURL(blob);
 }
 
-export async function generateImageFromText(prompt: string, aspectRatio: '1:1' | '16:9' | '9:16' = '1:1'): Promise<string> {
+export async function generateImageFromText(prompt: string, aspectRatio: '1:1' | '3:4' | '4:3' | '9:16' | '16:9' | '1:4' | '1:8' | '4:1' | '8:1' = '1:1'): Promise<string> {
   const ai = new GoogleGenAI({ apiKey: getPaidApiKey() });
   const response = await ai.models.generateContent({
-    model: 'gemini-3.1-flash-image-preview',
+    model: 'gemini-3-pro-image-preview',
     contents: {
       parts: [{ text: prompt }],
     },
@@ -424,4 +462,60 @@ export async function getFastResponse(prompt: string): Promise<string> {
     contents: prompt,
   });
   return response.text || "";
+}
+
+export async function getSearchGroundingResponse(prompt: string): Promise<{ text: string, links: any[] }> {
+  const ai = new GoogleGenAI({ apiKey: getApiKey() });
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: prompt,
+    config: {
+      tools: [{ googleSearch: {} }],
+    },
+  });
+
+  return {
+    text: response.text || "",
+    links: response.candidates?.[0]?.groundingMetadata?.groundingChunks || []
+  };
+}
+
+export async function editImage(base64Image: string, prompt: string): Promise<string> {
+  const ai = new GoogleGenAI({ apiKey: getPaidApiKey() });
+  const response = await ai.models.generateContent({
+    model: 'gemini-3.1-flash-image-preview',
+    contents: {
+      parts: [
+        {
+          inlineData: {
+            data: base64Image.split(',')[1],
+            mimeType: 'image/png',
+          },
+        },
+        { text: prompt },
+      ],
+    },
+  });
+
+  for (const part of response.candidates[0].content.parts) {
+    if (part.inlineData) {
+      return `data:image/png;base64,${part.inlineData.data}`;
+    }
+  }
+  throw new Error("Image editing failed");
+}
+
+export async function getLiveAudioSession(callbacks: any) {
+  const ai = new GoogleGenAI({ apiKey: getPaidApiKey() });
+  return ai.live.connect({
+    model: "gemini-2.5-flash-native-audio-preview-12-2025",
+    callbacks,
+    config: {
+      responseModalities: [Modality.AUDIO],
+      speechConfig: {
+        voiceConfig: { prebuiltVoiceConfig: { voiceName: "Zephyr" } },
+      },
+      systemInstruction: "You are a helpful assistant for a traveler exploring the Outer Banks. You can help with navigation, lore, and island secrets.",
+    },
+  });
 }
