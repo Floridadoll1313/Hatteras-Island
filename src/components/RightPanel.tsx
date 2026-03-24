@@ -13,7 +13,9 @@ import {
   Compass,
   Layers,
   Waves,
-  Loader2
+  Loader2,
+  Users,
+  Heart
 } from 'lucide-react';
 import { GameState } from '../types';
 import { AI_TRAITS } from '../gameConstants';

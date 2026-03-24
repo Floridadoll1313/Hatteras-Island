@@ -1095,8 +1095,11 @@ export default function App() {
     });
   };
 
-  const handleUpgrade = async (tier: typeof TIERS[0]) => {
-    setCheckoutLoading(tier.id);
+  const handleUpgrade = async (tierId: SubscriptionTier) => {
+    const tier = TIERS.find(t => t.id === tierId);
+    if (!tier) return;
+    
+    setCheckoutLoading(tierId);
     try {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
@@ -1104,7 +1107,7 @@ export default function App() {
       setGameState(prev => ({
         ...prev,
         subscription: {
-          tier: tier.id as SubscriptionTier,
+          tier: tierId,
           status: 'active'
         },
         history: [...prev.history, `Subscription Initialized: ${tier.name} Tier Active.`]
@@ -2501,201 +2504,6 @@ export default function App() {
           </div>
         )}
       </AnimatePresence>
-      <AnimatePresence>
-        {showSkills && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowSkills(false)}
-              className="absolute inset-0 bg-black/90 backdrop-blur-md"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-2xl bg-[#0A0A0A] border border-[#00E0FF]/20 rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(0,224,255,0.1)]"
-            >
-              <div className="p-8 border-b border-[#00E0FF]/10 flex items-center justify-between bg-[#00E0FF]/5">
-                <div className="flex items-center gap-3">
-                  <Compass size={24} className="text-[#00E0FF]" />
-                  <div>
-                    <h2 className="text-2xl font-bold tracking-tight text-[#00E0FF]">Island Skill Tree</h2>
-                    <p className="text-white/40 text-[10px] uppercase tracking-widest mt-1">Available Sand Dollars: {gameState.sandDollars.toFixed(0)} SD</p>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => setShowSkills(false)}
-                  className="p-2 hover:bg-white/10 rounded-full transition-colors"
-                >
-                  <X size={24} />
-                </button>
-              </div>
-
-              <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-                {SKILLS.map((skill) => {
-                  const isUnlocked = gameState.skills.includes(skill.id);
-                  const canAfford = gameState.sandDollars >= skill.cost;
-                  const Icon = skill.icon;
-
-                  return (
-                    <button
-                      key={skill.id}
-                      disabled={isUnlocked || !canAfford}
-                      onClick={() => purchaseSkill(skill.id, skill.cost)}
-                      className={`p-6 rounded-2xl border text-left transition-all duration-300 group relative overflow-hidden ${
-                        isUnlocked 
-                        ? 'bg-[#00E0FF]/10 border-[#00E0FF]/40' 
-                        : canAfford 
-                          ? 'bg-white/5 border-white/10 hover:border-[#00E0FF]/30 hover:bg-[#00E0FF]/5' 
-                          : 'bg-white/5 border-white/5 opacity-40 grayscale'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between mb-4">
-                        <div className={`p-3 rounded-xl ${isUnlocked ? 'bg-[#00E0FF]/20' : 'bg-white/5'}`}>
-                          <Icon size={20} className={isUnlocked ? 'text-[#00E0FF]' : 'text-white/40'} />
-                        </div>
-                        {isUnlocked ? (
-                          <span className="text-[8px] font-mono uppercase text-[#00E0FF] bg-[#00E0FF]/10 px-2 py-1 rounded">Unlocked</span>
-                        ) : (
-                          <span className="text-[10px] font-mono text-white/60">{skill.cost} SD</span>
-                        )}
-                      </div>
-                      <h3 className={`text-sm font-bold mb-1 ${isUnlocked ? 'text-[#00E0FF]' : 'text-white'}`}>{skill.name}</h3>
-                      <p className="text-[10px] text-white/40 leading-relaxed">{skill.description}</p>
-                      
-                      {isUnlocked && (
-                        <motion.div 
-                          layoutId="active-glow"
-                          className="absolute inset-0 bg-gradient-to-br from-[#00E0FF]/5 to-transparent pointer-events-none"
-                        />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-              
-              <div className="p-6 bg-black/40 border-t border-white/5 text-center">
-                <p className="text-[9px] font-mono text-white/20 uppercase tracking-widest">Sand dollars are earned by successfully navigating the island's mysteries.</p>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Pricing Modal */}
-      <AnimatePresence>
-        {showPricing && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowPricing(false)}
-              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-5xl bg-[#0A0A0A] border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
-            >
-              <div className="p-8 border-b border-white/10 flex items-center justify-between bg-black/40">
-                <div>
-                  <h2 className="text-3xl font-bold tracking-tight text-[#00E0FF]">Enhance Your Legacy</h2>
-                  <p className="text-white/50 text-sm mt-1">Select a tier to unlock advanced island capabilities.</p>
-                </div>
-                <button 
-                  onClick={() => setShowPricing(false)}
-                  className="p-2 hover:bg-white/10 rounded-full transition-colors"
-                >
-                  <X size={24} />
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  {TIERS.map((tier) => (
-                    <div 
-                      key={tier.id}
-                      className={`relative flex flex-col p-6 rounded-2xl border transition-all duration-300 ${
-                        gameState.subscription.tier === tier.id 
-                        ? 'bg-[#00E0FF]/5 border-[#00E0FF]/40 ring-1 ring-[#00E0FF]/20' 
-                        : 'bg-white/5 border-white/10 hover:border-white/20'
-                      }`}
-                    >
-                      {gameState.subscription.tier === tier.id && (
-                        <div className="absolute top-4 right-4 text-[#00E0FF]">
-                          <Check size={20} />
-                        </div>
-                      )}
-                      
-                      <div className="mb-6">
-                        <h3 className="text-xl font-bold" style={{ color: tier.color }}>{tier.name}</h3>
-                        <div className="flex items-baseline gap-1 mt-2">
-                          <span className="text-3xl font-bold">${tier.price}</span>
-                          <span className="text-white/40 text-sm">/mo</span>
-                        </div>
-                        <p className="text-xs text-white/50 mt-4 leading-relaxed">{tier.description}</p>
-                      </div>
-
-                      <div className="flex-1 space-y-3 mb-8">
-                        {tier.features.map((feature, i) => (
-                          <div key={i} className="flex items-start gap-2 text-[11px] text-white/70">
-                            <div className="mt-1 shrink-0">
-                              <Check size={12} className="text-[#00FF00]" />
-                            </div>
-                            {feature}
-                          </div>
-                        ))}
-                      </div>
-
-                      <button
-                        onClick={() => handleUpgrade(tier)}
-                        disabled={!!checkoutLoading || gameState.subscription.tier === tier.id}
-                        className={`w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
-                          gameState.subscription.tier === tier.id
-                          ? 'bg-[#00FF00]/20 text-[#00FF00] cursor-default'
-                          : 'bg-white text-black hover:bg-[#00FF00] hover:text-black'
-                        }`}
-                      >
-                        {checkoutLoading === tier.id ? (
-                          <Loader2 size={18} className="animate-spin" />
-                        ) : gameState.subscription.tier === tier.id ? (
-                          'Current Tier'
-                        ) : (
-                          <>
-                            Initialize
-                            <ArrowRight size={16} />
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-12 p-6 rounded-2xl bg-[#00FF00]/5 border border-[#00FF00]/20 flex flex-col md:flex-row items-center justify-between gap-6">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 rounded-xl bg-[#00FF00]/10">
-                      <Lock size={24} className="text-[#00FF00]" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold">Fair Market Value Guarantee</h4>
-                      <p className="text-xs text-white/50">Our pricing is dynamically adjusted to ensure sustainable AI processing and continuous realm expansion.</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs font-mono text-[#00FF00]">
-                    <CreditCard size={16} />
-                    SECURE_STRIPE_ENCRYPTION_ACTIVE
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
       {/* Footer / Status Bar */}
       <footer className="relative z-10 border-t border-[#00FF00]/10 bg-black/60 backdrop-blur-md px-4 py-2 flex items-center justify-between text-[10px] font-mono text-white/40">
         <div className="flex gap-6">
@@ -2728,12 +2536,14 @@ export default function App() {
       />
 
       <SkillsOverlay 
+        show={showSkills}
         gameState={gameState}
         setShowSkills={setShowSkills}
         purchaseSkill={purchaseSkill}
       />
 
       <PricingOverlay 
+        show={showPricing}
         gameState={gameState}
         setShowPricing={setShowPricing}
         handleUpgrade={handleUpgrade}
