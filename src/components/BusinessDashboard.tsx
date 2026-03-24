@@ -1,280 +1,232 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   X, 
+  BarChart3, 
   TrendingUp, 
+  Users, 
   DollarSign, 
   Briefcase, 
-  BarChart3, 
-  Users, 
+  ArrowUpRight, 
+  ArrowDownRight, 
+  Activity, 
+  Database, 
+  Layers, 
+  Zap, 
+  Shield, 
+  Sword, 
+  Brain, 
+  Sparkles, 
+  Waves, 
+  Flame, 
+  Anchor, 
+  Compass, 
+  Skull, 
+  History as HistoryIcon, 
+  Mic, 
+  Volume2, 
+  VolumeX, 
+  Play, 
+  Pause, 
+  RefreshCw, 
+  Trash2, 
   CheckCircle2, 
-  ArrowRight,
-  Zap,
-  Shield,
-  Globe
+  Circle, 
+  Rocket, 
+  Mail 
 } from 'lucide-react';
 import { GameState } from '../types';
 
 interface BusinessDashboardProps {
   gameState: GameState;
   onClose: () => void;
-  onUpdateBusiness: (update: Partial<GameState['business']>) => void;
-  onLog: (message: string) => void;
 }
 
-const CLIENT_TYPES = [
-  { id: 'local_shop', name: 'Local Surf Shop', industry: 'Retail', baseValue: 500, icon: Globe },
-  { id: 'real_estate', name: 'OBX Real Estate', industry: 'Property', baseValue: 1200, icon: Shield },
-  { id: 'tech_startup', name: 'Neural Drift', industry: 'Tech', baseValue: 2500, icon: Zap },
-  { id: 'enterprise', name: 'Atlantic Data Corp', industry: 'Enterprise', baseValue: 7500, icon: Briefcase }
-];
-
-export default function BusinessDashboard({ gameState, onClose, onUpdateBusiness, onLog }: BusinessDashboardProps) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'marketplace' | 'clients'>('overview');
-
-  const handleSellWorkflow = (clientType: typeof CLIENT_TYPES[0]) => {
-    if (!gameState.currentRealm) return;
-    
-    const saleValue = clientType.baseValue * (1 + (gameState.aiStatus.evolution / 10));
-    onUpdateBusiness({
-      revenue: gameState.business.revenue + saleValue,
-      workflowsSold: gameState.business.workflowsSold + 1,
-      activeClients: gameState.business.activeClients + 1,
-      reputation: gameState.business.reputation + 5
-    });
-    onLog(`Workflow Sold: ${clientType.name} purchased ${gameState.currentRealm.name} neural data for $${saleValue.toLocaleString()}.`);
-  };
+const BusinessDashboard: React.FC<BusinessDashboardProps> = ({
+  gameState,
+  onClose
+}) => {
+  const survivor = gameState.survivor;
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[150] bg-black/95 backdrop-blur-3xl flex items-center justify-center p-4 md:p-8"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-8 bg-black/90 backdrop-blur-2xl"
     >
-      <div className="max-w-6xl w-full h-full max-h-[800px] bg-black border border-[#00FF00]/20 rounded-[40px] overflow-hidden flex flex-col shadow-[0_0_100px_rgba(0,255,0,0.1)]">
+      <div className="relative w-full max-w-6xl max-h-[80vh] bg-[#0a0a0a] border border-orange-900/30 rounded-[3rem] shadow-2xl flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="p-8 border-b border-[#00FF00]/10 flex items-center justify-between bg-[#00FF00]/5">
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-2xl bg-[#00FF00]/20 text-[#00FF00]">
-              <TrendingUp size={32} />
+        <div className="p-10 border-b border-orange-900/20 bg-gradient-to-r from-orange-900/10 to-transparent flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <div className="w-16 h-16 rounded-2xl bg-orange-600 flex items-center justify-center shadow-lg shadow-orange-600/20">
+              <Briefcase className="text-white w-8 h-8" />
             </div>
             <div>
-              <h2 className="text-3xl font-bold uppercase tracking-tighter text-white">Commercial Operations</h2>
-              <p className="text-[10px] font-mono text-[#00FF00]/60 uppercase tracking-widest">Neural Workflow Monetization Hub</p>
+              <h2 className="text-4xl font-bold text-white tracking-tighter uppercase italic">Island Business</h2>
+              <p className="text-orange-400 font-mono text-xs uppercase tracking-[0.3em] mt-1">Hatteras Island • Outer Banks Operations</p>
             </div>
           </div>
-          <button 
+          <button
             onClick={onClose}
-            className="p-3 rounded-full hover:bg-white/5 text-white/40 transition-colors"
+            className="p-2 hover:bg-orange-900/20 rounded-full transition-colors text-orange-400"
           >
-            <X size={24} />
+            <X className="w-8 h-8" />
           </button>
         </div>
 
-        {/* Navigation */}
-        <div className="flex border-b border-[#00FF00]/10">
-          {[
-            { id: 'overview', label: 'Overview', icon: BarChart3 },
-            { id: 'marketplace', label: 'Workflow Marketplace', icon: Globe },
-            { id: 'clients', label: 'Active Clients', icon: Users }
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex-1 p-4 flex items-center justify-center gap-3 transition-all ${
-                activeTab === tab.id 
-                ? 'bg-[#00FF00]/10 text-[#00FF00] border-b-2 border-[#00FF00]' 
-                : 'text-white/40 hover:text-white/60'
-              }`}
-            >
-              <tab.icon size={18} />
-              <span className="text-xs font-bold uppercase tracking-widest">{tab.label}</span>
-            </button>
-          ))}
-        </div>
+        {/* Dashboard Content */}
+        <div className="flex-1 p-10 overflow-y-auto custom-scrollbar">
+          {/* Key Metrics */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+            <div className="p-8 bg-white/5 border border-white/10 rounded-3xl flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 rounded-xl bg-orange-900/20 flex items-center justify-center text-orange-500">
+                  <DollarSign className="w-5 h-5" />
+                </div>
+                <div className="flex items-center gap-1 text-green-500 text-[10px] font-mono uppercase">
+                  <ArrowUpRight className="w-3 h-3" />
+                  +12%
+                </div>
+              </div>
+              <div>
+                <span className="text-[10px] text-orange-400/60 font-mono uppercase tracking-widest block mb-1">Total Revenue</span>
+                <span className="text-3xl font-bold text-white tracking-tighter italic">${gameState.sandDollars * 10}</span>
+              </div>
+            </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-8">
-          <AnimatePresence mode="wait">
-            {activeTab === 'overview' && (
-              <motion.div
-                key="overview"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="space-y-8"
-              >
-                {/* Stats Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="p-8 rounded-3xl bg-white/5 border border-white/10 space-y-2">
-                    <div className="flex items-center gap-2 text-[#00FF00]">
-                      <DollarSign size={16} />
-                      <span className="text-[10px] font-mono uppercase tracking-widest">Total Revenue</span>
-                    </div>
-                    <div className="text-5xl font-bold tracking-tighter">${gameState.business.revenue.toLocaleString()}</div>
-                    <div className="text-[10px] font-mono text-white/20 uppercase">Projected Annual: ${(gameState.business.revenue * 12).toLocaleString()}</div>
+            <div className="p-8 bg-white/5 border border-white/10 rounded-3xl flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 rounded-xl bg-orange-900/20 flex items-center justify-center text-orange-500">
+                  <Users className="w-5 h-5" />
+                </div>
+                <div className="flex items-center gap-1 text-green-500 text-[10px] font-mono uppercase">
+                  <ArrowUpRight className="w-3 h-3" />
+                  +5%
+                </div>
+              </div>
+              <div>
+                <span className="text-[10px] text-orange-400/60 font-mono uppercase tracking-widest block mb-1">Active Users</span>
+                <span className="text-3xl font-bold text-white tracking-tighter italic">{survivor?.contestants.length || 0}</span>
+              </div>
+            </div>
+
+            <div className="p-8 bg-white/5 border border-white/10 rounded-3xl flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 rounded-xl bg-orange-900/20 flex items-center justify-center text-orange-500">
+                  <BarChart3 className="w-5 h-5" />
+                </div>
+                <div className="flex items-center gap-1 text-red-500 text-[10px] font-mono uppercase">
+                  <ArrowDownRight className="w-3 h-3" />
+                  -2%
+                </div>
+              </div>
+              <div>
+                <span className="text-[10px] text-orange-400/60 font-mono uppercase tracking-widest block mb-1">Engagement Rate</span>
+                <span className="text-3xl font-bold text-white tracking-tighter italic">84%</span>
+              </div>
+            </div>
+
+            <div className="p-8 bg-white/5 border border-white/10 rounded-3xl flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 rounded-xl bg-orange-900/20 flex items-center justify-center text-orange-500">
+                  <TrendingUp className="w-5 h-5" />
+                </div>
+                <div className="flex items-center gap-1 text-green-500 text-[10px] font-mono uppercase">
+                  <ArrowUpRight className="w-3 h-3" />
+                  +24%
+                </div>
+              </div>
+              <div>
+                <span className="text-[10px] text-orange-400/60 font-mono uppercase tracking-widest block mb-1">AI Evolution</span>
+                <span className="text-3xl font-bold text-white tracking-tighter italic">{Math.floor(gameState.evolution * 100)}%</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Charts & Details */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="p-10 bg-white/5 border border-white/10 rounded-[2.5rem]">
+              <div className="flex items-center justify-between mb-10">
+                <h3 className="text-xl font-bold text-white uppercase italic tracking-tighter">Revenue Overview</h3>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-orange-500" />
+                    <span className="text-[8px] text-orange-400/60 font-mono uppercase tracking-widest">Revenue</span>
                   </div>
-                  <div className="p-8 rounded-3xl bg-white/5 border border-white/10 space-y-2">
-                    <div className="flex items-center gap-2 text-[#00E0FF]">
-                      <Users size={16} />
-                      <span className="text-[10px] font-mono uppercase tracking-widest">Active Clients</span>
-                    </div>
-                    <div className="text-5xl font-bold tracking-tighter">{gameState.business.activeClients}</div>
-                    <div className="text-[10px] font-mono text-white/20 uppercase">Retention: 98.4%</div>
-                  </div>
-                  <div className="p-8 rounded-3xl bg-white/5 border border-white/10 space-y-2">
-                    <div className="flex items-center gap-2 text-[#FFD700]">
-                      <Zap size={16} />
-                      <span className="text-[10px] font-mono uppercase tracking-widest">Workflows Sold</span>
-                    </div>
-                    <div className="text-5xl font-bold tracking-tighter">{gameState.business.workflowsSold}</div>
-                    <div className="text-[10px] font-mono text-white/20 uppercase">Avg Value: ${(gameState.business.revenue / (gameState.business.workflowsSold || 1)).toFixed(0)}</div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-blue-500" />
+                    <span className="text-[8px] text-orange-400/60 font-mono uppercase tracking-widest">Expenses</span>
                   </div>
                 </div>
+              </div>
+              <div className="h-64 flex items-end gap-4">
+                {[40, 60, 45, 80, 55, 90, 75].map((h, i) => (
+                  <div key={i} className="flex-1 flex flex-col gap-2">
+                    <motion.div 
+                      initial={{ height: 0 }}
+                      animate={{ height: `${h}%` }}
+                      className="w-full bg-orange-600/40 border border-orange-500/30 rounded-t-lg"
+                    />
+                    <motion.div 
+                      initial={{ height: 0 }}
+                      animate={{ height: `${h * 0.4}%` }}
+                      className="w-full bg-blue-600/40 border border-blue-500/30 rounded-t-lg"
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-between mt-6 px-2">
+                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
+                  <span key={d} className="text-[8px] text-orange-400/40 font-mono uppercase tracking-widest">{d}</span>
+                ))}
+              </div>
+            </div>
 
-                {/* Growth Chart Placeholder */}
-                <div className="p-8 rounded-[40px] bg-white/5 border border-white/10 h-64 flex flex-col justify-end gap-4 relative overflow-hidden">
-                  <div className="absolute top-8 left-8">
-                    <h3 className="text-xl font-bold uppercase tracking-tighter">Revenue Velocity</h3>
-                    <p className="text-[10px] font-mono text-white/40 uppercase">Real-time Neural Monetization Stream</p>
-                  </div>
-                  <div className="flex items-end gap-2 h-32">
-                    {[40, 65, 45, 90, 75, 100, 85, 120, 110, 150].map((h, i) => (
-                      <motion.div
-                        key={i}
-                        initial={{ height: 0 }}
-                        animate={{ height: `${h}%` }}
-                        transition={{ delay: i * 0.1 }}
-                        className="flex-1 bg-gradient-to-t from-[#00FF00]/40 to-[#00FF00] rounded-t-lg"
-                      />
-                    ))}
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {activeTab === 'marketplace' && (
-              <motion.div
-                key="marketplace"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="space-y-8"
-              >
-                <div className="p-6 rounded-3xl bg-[#00FF00]/5 border border-[#00FF00]/20 flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 rounded-xl bg-[#00FF00]/20 text-[#00FF00]">
-                      <Globe size={24} />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold uppercase tracking-tighter">Active Realm: {gameState.currentRealm?.name || 'No Data'}</h3>
-                      <p className="text-[10px] font-mono text-white/40 uppercase tracking-widest">Available for Neural Workflow Packaging</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-[#00FF00]">+{gameState.aiStatus.evolution.toFixed(1)}x</div>
-                    <div className="text-[10px] font-mono text-white/20 uppercase">Evolution Multiplier</div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {CLIENT_TYPES.map((client) => (
-                    <button
-                      key={client.id}
-                      onClick={() => handleSellWorkflow(client)}
-                      disabled={!gameState.currentRealm}
-                      className="group p-8 rounded-[32px] bg-white/5 border border-white/10 hover:border-[#00FF00]/50 hover:bg-[#00FF00]/5 transition-all text-left relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-20 transition-opacity">
-                        <client.icon size={120} />
+            <div className="p-10 bg-white/5 border border-white/10 rounded-[2.5rem]">
+              <h3 className="text-xl font-bold text-white uppercase italic tracking-tighter mb-10">Recent Transactions</h3>
+              <div className="space-y-4">
+                {[
+                  { name: 'Neural Boost Pack', amount: '+150 SD', time: '2 mins ago', status: 'completed' },
+                  { name: 'Island Subscription', amount: '+$29.00', time: '15 mins ago', status: 'completed' },
+                  { name: 'Skill Unlock: Surfing', amount: '-50 SD', time: '1 hour ago', status: 'completed' },
+                  { name: 'Lighthouse Upgrade', amount: '-100 SD', time: '3 hours ago', status: 'completed' },
+                  { name: 'New User Onboarding', amount: '+10 SD', time: '5 hours ago', status: 'completed' }
+                ].map((t, i) => (
+                  <div key={i} className="p-4 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-between group hover:bg-white/10 transition-all">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-orange-900/20 flex items-center justify-center text-orange-500 group-hover:scale-110 transition-transform">
+                        <CheckCircle2 className="w-5 h-5" />
                       </div>
-                      <div className="relative z-10 space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div className="p-3 rounded-2xl bg-white/5 text-white/60 group-hover:text-[#00FF00] transition-colors">
-                            <client.icon size={24} />
-                          </div>
-                          <div className="text-[10px] font-mono text-white/20 uppercase tracking-widest">{client.industry}</div>
-                        </div>
-                        <div>
-                          <h4 className="text-2xl font-bold uppercase tracking-tighter">{client.name}</h4>
-                          <p className="text-xs text-white/40 italic">Seeking automated {gameState.currentRealm?.environment || 'island'} workflows.</p>
-                        </div>
-                        <div className="pt-4 flex items-center justify-between border-t border-white/5">
-                          <div className="text-2xl font-bold text-[#00FF00]">${(client.baseValue * (1 + (gameState.aiStatus.evolution / 10))).toLocaleString()}</div>
-                          <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-[#00FF00] opacity-0 group-hover:opacity-100 transition-opacity">
-                            Sell Workflow
-                            <ArrowRight size={14} />
-                          </div>
-                        </div>
+                      <div>
+                        <h4 className="text-[10px] font-bold text-white uppercase italic">{t.name}</h4>
+                        <span className="text-[8px] text-orange-400/40 font-mono uppercase tracking-widest">{t.time}</span>
                       </div>
-                    </button>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-
-            {activeTab === 'clients' && (
-              <motion.div
-                key="clients"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="space-y-4"
-              >
-                {gameState.business.activeClients === 0 ? (
-                  <div className="h-64 flex flex-col items-center justify-center text-white/20 space-y-4">
-                    <Users size={48} />
-                    <p className="text-xs font-mono uppercase tracking-widest">No Active Client Contracts</p>
+                    </div>
+                    <div className="text-right">
+                      <span className={`text-[10px] font-bold font-mono ${t.amount.startsWith('+') ? 'text-green-500' : 'text-red-500'}`}>
+                        {t.amount}
+                      </span>
+                      <span className="text-[8px] text-orange-400/40 font-mono uppercase tracking-widest block mt-0.5">{t.status}</span>
+                    </div>
                   </div>
-                ) : (
-                  <div className="grid gap-4">
-                    {Array.from({ length: gameState.business.activeClients }).map((_, i) => (
-                      <div key={i} className="p-6 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between group">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#00FF00]/20 to-[#00E0FF]/20 flex items-center justify-center text-[#00FF00]">
-                            <Briefcase size={20} />
-                          </div>
-                          <div>
-                            <div className="text-sm font-bold uppercase tracking-tight">Client #{1000 + i}</div>
-                            <div className="text-[10px] font-mono text-white/40 uppercase">Contract Active • Recurring Revenue</div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-6">
-                          <div className="text-right">
-                            <div className="text-sm font-bold text-[#00FF00]">+$1,250</div>
-                            <div className="text-[10px] font-mono text-white/20 uppercase">Monthly Payout</div>
-                          </div>
-                          <div className="p-2 rounded-lg bg-[#00FF00]/10 text-[#00FF00]">
-                            <CheckCircle2 size={16} />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Footer */}
-        <div className="p-6 bg-white/5 border-t border-[#00FF00]/10 flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-[#00FF00] animate-pulse" />
-              <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest">Market Status: Bullish</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-[#00E0FF]" />
-              <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest">Neural Link: Stable</span>
-            </div>
-          </div>
-          <div className="text-[10px] font-mono text-white/20 uppercase tracking-widest">
-            © 2026 Hatteras Digital Ecosystems
+        <div className="p-8 bg-black/40 border-t border-orange-900/20 flex justify-center">
+          <div className="flex items-center gap-3 text-orange-500/40 text-[10px] font-mono uppercase tracking-[0.4em]">
+            <Rocket className="w-3 h-3" />
+            <span>Maximize Growth • Optimize Island Operations</span>
+            <Rocket className="w-3 h-3" />
           </div>
         </div>
       </div>
     </motion.div>
   );
-}
+};
+
+export default BusinessDashboard;

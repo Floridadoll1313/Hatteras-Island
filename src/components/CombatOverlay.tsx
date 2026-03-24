@@ -1,172 +1,236 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Skull, 
-  History as HistoryIcon, 
-  Heart, 
   Sword, 
   Shield, 
-  Zap 
+  Zap, 
+  Heart, 
+  Skull, 
+  Activity, 
+  History as HistoryIcon, 
+  ChevronRight, 
+  AlertCircle 
 } from 'lucide-react';
-import { GameState } from '../types';
+import { CombatState, CombatLogEntry } from '../types';
 
 interface CombatOverlayProps {
-  gameState: GameState;
-  combatLogFilter: 'all' | 'player' | 'enemy' | 'system';
-  setCombatLogFilter: (filter: 'all' | 'player' | 'enemy' | 'system') => void;
-  handleCombatAction: (action: 'attack' | 'defend' | 'special') => void;
-  scrollRef: React.RefObject<HTMLDivElement>;
+  combat: CombatState;
+  onAction: (action: 'attack' | 'defend' | 'special') => void;
+  logFilter: 'all' | 'player' | 'enemy' | 'system';
+  setLogFilter: (filter: 'all' | 'player' | 'enemy' | 'system') => void;
 }
 
-const CombatOverlay = ({
-  gameState,
-  combatLogFilter,
-  setCombatLogFilter,
-  handleCombatAction,
-  scrollRef
-}: CombatOverlayProps) => {
-  if (!gameState.combat) return null;
+const CombatOverlay: React.FC<CombatOverlayProps> = ({
+  combat,
+  onAction,
+  logFilter,
+  setLogFilter
+}) => {
+  const filteredLogs = combat.logs.filter(log => 
+    logFilter === 'all' || log.type === logFilter
+  );
 
   return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="absolute inset-0 bg-black/95 backdrop-blur-xl"
-        />
-        
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9, y: 50 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.9, y: 50 }}
-          className="relative w-full max-w-4xl bg-[#0A0A0A] border border-red-500/30 rounded-[2rem] overflow-hidden shadow-[0_0_100px_rgba(255,0,0,0.15)] flex flex-col md:flex-row h-[80vh]"
-        >
-          {/* Enemy Side */}
-          <div className="flex-1 p-8 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-white/5 bg-gradient-to-b from-red-500/5 to-transparent">
-            <div className="relative group">
-              <div className="absolute inset-0 bg-red-500/20 blur-3xl rounded-full animate-pulse" />
-              <Skull size={120} className="text-red-500 relative z-10 drop-shadow-[0_0_30px_rgba(239,68,68,0.5)]" />
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-8 bg-black/90 backdrop-blur-2xl"
+    >
+      <div className="relative w-full max-w-6xl h-[80vh] bg-[#0a0a0a] border border-orange-900/30 rounded-[3rem] shadow-2xl flex flex-col overflow-hidden">
+        {/* Combat Header */}
+        <div className="p-10 border-b border-orange-900/20 bg-gradient-to-r from-orange-900/10 to-transparent flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <div className="w-16 h-16 rounded-2xl bg-red-600 flex items-center justify-center shadow-lg shadow-red-600/20">
+              <Sword className="text-white w-8 h-8" />
             </div>
-            
-            <div className="mt-8 text-center space-y-2">
-              <h3 className="text-3xl font-bold tracking-tighter text-red-500 uppercase">{gameState.combat.enemy.name}</h3>
-              <p className="text-white/40 text-xs font-mono uppercase tracking-[0.3em]">{gameState.combat.enemy.description}</p>
+            <div>
+              <h2 className="text-4xl font-bold text-white tracking-tighter uppercase italic">Combat Protocol</h2>
+              <p className="text-orange-400 font-mono text-xs uppercase tracking-[0.3em] mt-1">Hatteras Island • Engagement Active</p>
             </div>
-            
-            <div className="mt-12 w-full max-w-xs space-y-2">
-              <div className="flex justify-between text-[10px] font-mono text-red-400 uppercase">
-                <span>Integrity</span>
-                <span>{gameState.combat.enemy.health} / {gameState.combat.enemy.maxHealth}</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="px-6 py-3 rounded-2xl bg-orange-900/20 border border-orange-500/30">
+              <span className="text-orange-400 font-mono text-xs uppercase tracking-widest">Turn: {combat.turn}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Combat Arena */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Left: Player Stats */}
+          <div className="w-1/4 p-10 border-r border-orange-900/10 flex flex-col justify-center">
+            <div className="text-center mb-12">
+              <div className="w-24 h-24 rounded-full border-4 border-blue-500/30 p-1 mx-auto mb-6 relative">
+                <div className="w-full h-full rounded-full bg-blue-900/20 flex items-center justify-center">
+                  <Activity className="w-10 h-10 text-blue-400" />
+                </div>
+                {combat.isDefending && (
+                  <motion.div 
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute -top-2 -right-2 w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center border-2 border-white shadow-lg"
+                  >
+                    <Shield className="w-5 h-5 text-white" />
+                  </motion.div>
+                )}
               </div>
-              <div className="h-2 bg-white/5 rounded-full overflow-hidden border border-white/10">
-                <motion.div 
-                  initial={{ width: '100%' }}
-                  animate={{ width: `${(gameState.combat.enemy.health / gameState.combat.enemy.maxHealth) * 100}%` }}
-                  className="h-full bg-red-500"
-                />
+              <h3 className="text-2xl font-bold text-white uppercase italic mb-2">Traveler</h3>
+              <p className="text-blue-400 font-mono text-[10px] uppercase tracking-widest">Neural Signature Active</p>
+            </div>
+
+            <div className="space-y-6">
+              <div className="flex flex-col">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] text-blue-400 font-mono uppercase">Vitality</span>
+                  <span className="text-[10px] text-blue-100 font-mono">{combat.playerHealth}/{combat.playerMaxHealth}</span>
+                </div>
+                <div className="w-full h-2 bg-blue-900/30 rounded-full overflow-hidden">
+                  <motion.div 
+                    className="h-full bg-blue-500"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${(combat.playerHealth / combat.playerMaxHealth) * 100}%` }}
+                  />
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Combat Controls & Logs */}
+          {/* Center: Logs & Actions */}
           <div className="flex-1 flex flex-col bg-black/40">
-            {/* Log Header & Filter */}
-            <div className="p-4 border-b border-white/5 flex items-center justify-between bg-black/20">
-              <div className="flex items-center gap-2">
-                <HistoryIcon size={14} className="text-white/40" />
-                <span className="text-[10px] font-mono uppercase tracking-widest text-white/40">Combat Log</span>
-              </div>
-              <div className="flex gap-1">
-                {(['all', 'player', 'enemy', 'system'] as const).map(f => (
+            {/* Logs */}
+            <div className="flex-1 p-8 overflow-y-auto custom-scrollbar space-y-4">
+              <div className="flex items-center gap-4 mb-6 sticky top-0 bg-black/40 backdrop-blur-md p-2 rounded-xl border border-white/5">
+                {['all', 'player', 'enemy', 'system'].map(filter => (
                   <button
-                    key={f}
-                    onClick={() => setCombatLogFilter(f)}
-                    className={`px-2 py-1 rounded text-[8px] font-mono uppercase transition-all ${combatLogFilter === f ? 'bg-[#00FF00]/20 text-[#00FF00] border border-[#00FF00]/30' : 'text-white/20 hover:text-white/40'}`}
+                    key={filter}
+                    onClick={() => setLogFilter(filter as any)}
+                    className={`px-4 py-1.5 rounded-lg text-[10px] font-mono uppercase tracking-widest transition-all ${
+                      logFilter === filter 
+                        ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' 
+                        : 'text-orange-400/40 hover:text-orange-400 hover:bg-white/5'
+                    }`}
                   >
-                    {f}
+                    {filter}
                   </button>
                 ))}
               </div>
+
+              <AnimatePresence mode="popLayout">
+                {filteredLogs.map((log, i) => (
+                  <motion.div
+                    key={log.timestamp + i}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className={`flex gap-4 p-4 rounded-2xl border ${
+                      log.type === 'player' ? 'bg-blue-900/10 border-blue-900/20' :
+                      log.type === 'enemy' ? 'bg-red-900/10 border-red-900/20' :
+                      'bg-orange-900/10 border-orange-900/20'
+                    }`}
+                  >
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                      log.type === 'player' ? 'bg-blue-600/20 text-blue-400' :
+                      log.type === 'enemy' ? 'bg-red-600/20 text-red-400' :
+                      'bg-orange-600/20 text-orange-400'
+                    }`}>
+                      {log.type === 'player' ? <Sword className="w-4 h-4" /> :
+                       log.type === 'enemy' ? <Skull className="w-4 h-4" /> :
+                       <Activity className="w-4 h-4" />}
+                    </div>
+                    <div>
+                      <p className="text-xs text-orange-100/90 font-mono leading-relaxed">{log.message}</p>
+                      <span className="text-[8px] text-orange-400/40 font-mono uppercase mt-1 block">
+                        {new Date(log.timestamp).toLocaleTimeString()}
+                      </span>
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
             </div>
 
-            {/* Logs */}
-            <div className="flex-1 p-6 overflow-y-auto font-mono text-[11px] space-y-2 scrollbar-hide">
-              {(gameState.combat.logs || [])
-                .filter(log => combatLogFilter === 'all' || log.type === combatLogFilter)
-                .map((log, i) => (
-                <motion.div 
-                  key={i}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className={log.type === 'player' ? 'text-[#00FF00]' : log.type === 'enemy' ? 'text-red-400' : 'text-blue-400'}
-                >
-                  <span className="opacity-30 mr-2">[{new Date(log.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}]</span>
-                  {log.message}
-                </motion.div>
-              ))}
-              <div ref={scrollRef} />
-            </div>
+            {/* Actions */}
+            <div className="p-10 border-t border-orange-900/20 bg-black/60 grid grid-cols-3 gap-6">
+              <button
+                disabled={combat.turn !== 'player'}
+                onClick={() => onAction('attack')}
+                className="group p-6 bg-red-600/10 border border-red-600/30 rounded-3xl hover:bg-red-600/20 transition-all flex flex-col items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <div className="w-12 h-12 rounded-2xl bg-red-600 flex items-center justify-center shadow-lg shadow-red-600/20 group-hover:scale-110 transition-transform">
+                  <Sword className="w-6 h-6 text-white" />
+                </div>
+                <span className="text-xs font-bold text-white uppercase italic">Strike</span>
+                <span className="text-[8px] text-red-400/60 font-mono uppercase tracking-widest">Direct Attack</span>
+              </button>
 
-            {/* Player HUD & Controls */}
-            <div className="p-8 border-t border-white/5 bg-white/5 space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <Heart size={14} className="text-[#00FF00]" />
-                    <span className="text-xs font-bold text-white uppercase tracking-wider">Island Harmony</span>
-                  </div>
-                  <div className="w-48 h-1.5 bg-white/5 rounded-full overflow-hidden border border-white/10">
-                    <motion.div 
-                      animate={{ width: `${(gameState.combat.playerHealth / gameState.combat.playerMaxHealth) * 100}%` }}
-                      className="h-full bg-[#00FF00]"
-                    />
-                  </div>
+              <button
+                disabled={combat.turn !== 'player'}
+                onClick={() => onAction('defend')}
+                className="group p-6 bg-blue-600/10 border border-blue-600/30 rounded-3xl hover:bg-blue-600/20 transition-all flex flex-col items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/20 group-hover:scale-110 transition-transform">
+                  <Shield className="w-6 h-6 text-white" />
                 </div>
-                <div className="text-right">
-                  <div className="text-2xl font-bold text-[#00FF00]">{gameState.combat.playerHealth}</div>
-                  <div className="text-[10px] font-mono text-white/30 uppercase">Sync Level</div>
-                </div>
-              </div>
+                <span className="text-xs font-bold text-white uppercase italic">Shield</span>
+                <span className="text-[8px] text-blue-400/60 font-mono uppercase tracking-widest">Reduce Damage</span>
+              </button>
 
-              <div className="grid grid-cols-3 gap-3">
-                <button
-                  disabled={gameState.combat.turn !== 'player'}
-                  onClick={() => handleCombatAction('attack')}
-                  className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-[#00FF00]/10 border border-[#00FF00]/30 hover:bg-[#00FF00]/20 transition-all group disabled:opacity-50"
-                >
-                  <Sword size={20} className="text-[#00FF00] group-hover:scale-110 transition-transform" />
-                  <span className="text-[10px] font-mono uppercase text-[#00FF00]">Strike</span>
-                </button>
-                <button
-                  disabled={gameState.combat.turn !== 'player'}
-                  onClick={() => handleCombatAction('defend')}
-                  className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20 transition-all group disabled:opacity-50"
-                >
-                  <Shield size={20} className="text-blue-400 group-hover:scale-110 transition-transform" />
-                  <span className="text-[10px] font-mono uppercase text-blue-400">Shield</span>
-                </button>
-                <button
-                  disabled={gameState.combat.turn !== 'player'}
-                  onClick={() => handleCombatAction('special')}
-                  className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-purple-500/10 border border-purple-500/30 hover:bg-purple-500/20 transition-all group disabled:opacity-50"
-                >
-                  <Zap size={20} className="text-purple-400 group-hover:scale-110 transition-transform" />
-                  <span className="text-[10px] font-mono uppercase text-purple-400">Surge</span>
-                </button>
-              </div>
-              
-              {gameState.combat.turn === 'enemy' && (
-                <div className="text-center">
-                  <span className="text-[10px] font-mono text-red-500 uppercase animate-pulse">Enemy analyzing island patterns...</span>
+              <button
+                disabled={combat.turn !== 'player'}
+                onClick={() => onAction('special')}
+                className="group p-6 bg-orange-600/10 border border-orange-600/30 rounded-3xl hover:bg-orange-600/20 transition-all flex flex-col items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <div className="w-12 h-12 rounded-2xl bg-orange-600 flex items-center justify-center shadow-lg shadow-orange-600/20 group-hover:scale-110 transition-transform">
+                  <Zap className="w-6 h-6 text-white" />
                 </div>
-              )}
+                <span className="text-xs font-bold text-white uppercase italic">Surge</span>
+                <span className="text-[8px] text-orange-400/60 font-mono uppercase tracking-widest">High Damage</span>
+              </button>
             </div>
           </div>
-        </motion.div>
+
+          {/* Right: Enemy Stats */}
+          <div className="w-1/4 p-10 border-l border-orange-900/10 flex flex-col justify-center">
+            <div className="text-center mb-12">
+              <div className="w-24 h-24 rounded-full border-4 border-red-500/30 p-1 mx-auto mb-6 relative">
+                <div className="w-full h-full rounded-full bg-red-900/20 flex items-center justify-center">
+                  <Skull className="w-10 h-10 text-red-400" />
+                </div>
+              </div>
+              <h3 className="text-2xl font-bold text-white uppercase italic mb-2">{combat.enemy.name}</h3>
+              <p className="text-red-400 font-mono text-[10px] uppercase tracking-widest">Hostile Entity Detected</p>
+            </div>
+
+            <div className="space-y-6">
+              <div className="flex flex-col">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] text-red-400 font-mono uppercase">Integrity</span>
+                  <span className="text-[10px] text-red-100 font-mono">{combat.enemy.health}/{combat.enemy.maxHealth}</span>
+                </div>
+                <div className="w-full h-2 bg-red-900/30 rounded-full overflow-hidden">
+                  <motion.div 
+                    className="h-full bg-red-500"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${(combat.enemy.health / combat.enemy.maxHealth) * 100}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="p-4 bg-red-900/10 border border-red-900/20 rounded-2xl">
+                <h4 className="text-[10px] text-red-400 font-mono uppercase tracking-widest mb-3">Abilities</h4>
+                <div className="space-y-2">
+                  {combat.enemy.abilities.map((ability, i) => (
+                    <div key={i} className="flex items-center gap-2 text-[10px] text-orange-100/60 font-mono uppercase">
+                      <ChevronRight className="w-3 h-3 text-red-500" />
+                      {ability}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-    </AnimatePresence>
+    </motion.div>
   );
 };
 

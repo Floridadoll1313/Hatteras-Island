@@ -1,113 +1,77 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { CheckCircle2, Rocket, ArrowRight, Sparkles, PartyPopper } from 'lucide-react';
+import { CheckCircle2, Rocket, ArrowRight, Sparkles, Zap, Shield, Brain } from 'lucide-react';
 
 interface SubscriptionSuccessProps {
   plan: string;
   onClose: () => void;
 }
 
-export default function SubscriptionSuccess({ plan, onClose }: SubscriptionSuccessProps) {
+const SubscriptionSuccess: React.FC<SubscriptionSuccessProps> = ({
+  plan,
+  onClose
+}) => {
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[300] bg-black/90 backdrop-blur-2xl flex items-center justify-center p-4"
+      className="fixed inset-0 z-[110] flex items-center justify-center p-8 bg-black/95 backdrop-blur-3xl"
     >
-      <motion.div
-        initial={{ scale: 0.9, y: 20 }}
-        animate={{ scale: 1, y: 0 }}
-        className="max-w-md w-full bg-black border border-[#00E0FF]/30 rounded-[40px] p-10 text-center space-y-8 relative overflow-hidden shadow-[0_0_100px_rgba(0,224,255,0.2)]"
-      >
-        {/* Animated Background Elements */}
-        <div className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden">
+      <div className="relative w-full max-w-2xl bg-[#0a0a0a] border border-orange-500/30 rounded-[3rem] shadow-[0_0_100px_rgba(234,88,12,0.2)] flex flex-col overflow-hidden p-12 text-center">
+        {/* Success Icon */}
+        <motion.div
+          initial={{ scale: 0, rotate: -180 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ type: "spring", damping: 12, stiffness: 100 }}
+          className="w-32 h-32 rounded-full bg-orange-600 flex items-center justify-center mx-auto mb-10 shadow-lg shadow-orange-600/40 relative"
+        >
+          <CheckCircle2 className="w-16 h-16 text-white" />
           <motion.div
-            animate={{ 
-              scale: [1, 1.2, 1],
-              rotate: [0, 90, 0],
-              opacity: [0.1, 0.2, 0.1]
-            }}
-            transition={{ duration: 10, repeat: Infinity }}
-            className="absolute -top-20 -left-20 w-64 h-64 bg-[#00E0FF]/20 rounded-full blur-3xl"
+            animate={{ scale: [1, 1.5, 1], opacity: [0.5, 0, 0.5] }}
+            transition={{ duration: 2, repeat: Infinity }}
+            className="absolute inset-0 rounded-full bg-orange-500/50"
           />
-          <motion.div
-            animate={{ 
-              scale: [1, 1.3, 1],
-              rotate: [0, -90, 0],
-              opacity: [0.1, 0.3, 0.1]
-            }}
-            transition={{ duration: 12, repeat: Infinity }}
-            className="absolute -bottom-20 -right-20 w-64 h-64 bg-[#00FF00]/20 rounded-full blur-3xl"
-          />
-        </div>
+        </motion.div>
 
-        <div className="relative z-10 space-y-6">
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: 'spring', damping: 12, delay: 0.2 }}
-            className="w-24 h-24 bg-gradient-to-br from-[#00E0FF] to-[#00FF00] rounded-full mx-auto flex items-center justify-center shadow-[0_0_40px_rgba(0,224,255,0.5)]"
-          >
-            <CheckCircle2 size={48} className="text-black" />
-          </motion.div>
+        {/* Text Content */}
+        <h2 className="text-5xl font-bold text-white tracking-tighter uppercase italic mb-4">Neural Activation Successful</h2>
+        <p className="text-orange-400 font-mono text-sm uppercase tracking-[0.3em] mb-12">
+          Hatteras Island • {plan} Tier Active
+        </p>
 
-          <div className="space-y-2">
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="flex items-center justify-center gap-2 text-[#00E0FF] font-mono text-xs uppercase tracking-[0.3em]"
-            >
-              <Sparkles size={14} />
-              Neural Link Established
-              <Sparkles size={14} />
-            </motion.div>
-            <motion.h2
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-              className="text-4xl font-bold tracking-tighter uppercase text-white"
-            >
-              Welcome to the {plan}
-            </motion.h2>
-            <motion.p
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
-              className="text-white/40 text-sm"
-            >
-              Your subscription is now active. The island's neural infrastructure has been upgraded to match your new status.
-            </motion.p>
+        <div className="grid grid-cols-3 gap-6 mb-12">
+          <div className="p-6 bg-white/5 border border-white/10 rounded-3xl flex flex-col items-center gap-3">
+            <Zap className="w-6 h-6 text-orange-500" />
+            <span className="text-[10px] text-orange-100/60 font-mono uppercase tracking-widest">Priority Access</span>
           </div>
-
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.8 }}
-            className="p-6 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-between"
-          >
-            <div className="text-left">
-              <div className="text-[10px] font-mono text-white/20 uppercase tracking-widest">Active Plan</div>
-              <div className="text-lg font-bold text-[#00E0FF] uppercase tracking-tighter">{plan}</div>
-            </div>
-            <div className="p-3 rounded-2xl bg-[#00E0FF]/10 text-[#00E0FF]">
-              <Rocket size={24} />
-            </div>
-          </motion.div>
-
-          <motion.button
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1 }}
-            onClick={onClose}
-            className="w-full py-5 rounded-3xl bg-white text-black font-bold text-sm uppercase tracking-widest hover:bg-[#00E0FF] transition-all flex items-center justify-center gap-2 group shadow-[0_10px_30px_rgba(255,255,255,0.1)]"
-          >
-            Begin Operations
-            <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-          </motion.button>
+          <div className="p-6 bg-white/5 border border-white/10 rounded-3xl flex flex-col items-center gap-3">
+            <Shield className="w-6 h-6 text-orange-500" />
+            <span className="text-[10px] text-orange-100/60 font-mono uppercase tracking-widest">Enhanced Defense</span>
+          </div>
+          <div className="p-6 bg-white/5 border border-white/10 rounded-3xl flex flex-col items-center gap-3">
+            <Brain className="w-6 h-6 text-orange-500" />
+            <span className="text-[10px] text-orange-100/60 font-mono uppercase tracking-widest">Advanced AI</span>
+          </div>
         </div>
-      </motion.div>
+
+        <button
+          onClick={onClose}
+          className="w-full py-6 bg-orange-600 text-white font-bold uppercase italic tracking-[0.2em] rounded-2xl shadow-lg shadow-orange-600/20 hover:bg-orange-500 hover:-translate-y-1 transition-all flex items-center justify-center gap-4 group"
+        >
+          <Rocket className="w-6 h-6 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+          Enter the Nexus
+          <ArrowRight className="w-6 h-6" />
+        </button>
+
+        <div className="mt-10 flex items-center justify-center gap-2 text-orange-500/40 text-[10px] font-mono uppercase tracking-[0.4em]">
+          <Sparkles className="w-3 h-3" />
+          <span>The Island Recognizes Your Sovereignty</span>
+          <Sparkles className="w-3 h-3" />
+        </div>
+      </div>
     </motion.div>
   );
-}
+};
+
+export default SubscriptionSuccess;

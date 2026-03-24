@@ -1,135 +1,100 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Check, Loader2, ArrowRight, Lock, CreditCard } from 'lucide-react';
-import { GameState, SubscriptionTier } from '../types';
+import { X, Crown, Check, Zap, Rocket, BarChart3, Briefcase, Mail, ArrowRight } from 'lucide-react';
 import { TIERS } from '../gameConstants';
 
 interface PricingOverlayProps {
-  show: boolean;
-  gameState: GameState;
-  setShowPricing: (show: boolean) => void;
-  handleUpgrade: (tier: SubscriptionTier) => void;
-  checkoutLoading: string | null;
+  onUpgrade: (plan: string) => void;
+  onClose: () => void;
 }
 
-const PricingOverlay = ({
-  show,
-  gameState,
-  setShowPricing,
-  handleUpgrade,
-  checkoutLoading
-}: PricingOverlayProps) => {
+const PricingOverlay: React.FC<PricingOverlayProps> = ({
+  onUpgrade,
+  onClose
+}) => {
   return (
-    <AnimatePresence>
-      {show && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setShowPricing(false)}
-            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-          />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative w-full max-w-5xl bg-[#0A0A0A] border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-8 bg-black/90 backdrop-blur-2xl"
+    >
+      <div className="relative w-full max-w-6xl max-h-[80vh] bg-[#0a0a0a] border border-orange-900/30 rounded-[3rem] shadow-2xl flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="p-10 border-b border-orange-900/20 bg-gradient-to-r from-orange-900/10 to-transparent flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <div className="w-16 h-16 rounded-2xl bg-orange-600 flex items-center justify-center shadow-lg shadow-orange-600/20">
+              <Crown className="text-white w-8 h-8" />
+            </div>
+            <div>
+              <h2 className="text-4xl font-bold text-white tracking-tighter uppercase italic">Island Sovereign</h2>
+              <p className="text-orange-400 font-mono text-xs uppercase tracking-[0.3em] mt-1">Outer Banks • Neural Nexus Tiers</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-orange-900/20 rounded-full transition-colors text-orange-400"
           >
-            <div className="p-8 border-b border-white/10 flex items-center justify-between bg-black/40">
-              <div>
-                <h2 className="text-3xl font-bold tracking-tight text-[#00E0FF]">Enhance Your Legacy</h2>
-                <p className="text-white/50 text-sm mt-1">Select a tier to unlock advanced island capabilities.</p>
-              </div>
-              <button 
-                onClick={() => setShowPricing(false)}
-                className="p-2 hover:bg-white/10 rounded-full transition-colors"
-              >
-                <X size={24} />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {TIERS.map((tier) => (
-                  <div 
-                    key={tier.id}
-                    className={`relative flex flex-col p-6 rounded-2xl border transition-all duration-300 ${
-                      gameState.subscription.tier === tier.id 
-                      ? 'bg-[#00E0FF]/5 border-[#00E0FF]/40 ring-1 ring-[#00E0FF]/20' 
-                      : 'bg-white/5 border-white/10 hover:border-white/20'
-                    }`}
-                  >
-                    {gameState.subscription.tier === tier.id && (
-                      <div className="absolute top-4 right-4 text-[#00E0FF]">
-                        <Check size={20} />
-                      </div>
-                    )}
-                    
-                    <div className="mb-6">
-                      <h3 className="text-xl font-bold" style={{ color: tier.color }}>{tier.name}</h3>
-                      <div className="flex items-baseline gap-1 mt-2">
-                        <span className="text-3xl font-bold">${tier.price}</span>
-                        <span className="text-white/40 text-sm">/mo</span>
-                      </div>
-                      <p className="text-xs text-white/50 mt-4 leading-relaxed">{tier.description}</p>
-                    </div>
-
-                    <div className="flex-1 space-y-3 mb-8">
-                      {tier.features.map((feature, i) => (
-                        <div key={i} className="flex items-start gap-2 text-[11px] text-white/70">
-                          <div className="mt-1 shrink-0">
-                            <Check size={12} className="text-[#00FF00]" />
-                          </div>
-                          {feature}
-                        </div>
-                      ))}
-                    </div>
-
-                    <button
-                      onClick={() => handleUpgrade(tier.id as SubscriptionTier)}
-                      disabled={!!checkoutLoading || gameState.subscription.tier === tier.id}
-                      className={`w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
-                        gameState.subscription.tier === tier.id
-                        ? 'bg-[#00FF00]/20 text-[#00FF00] cursor-default'
-                        : 'bg-white text-black hover:bg-[#00FF00] hover:text-black'
-                      }`}
-                    >
-                      {checkoutLoading === tier.id ? (
-                        <Loader2 size={18} className="animate-spin" />
-                      ) : gameState.subscription.tier === tier.id ? (
-                        'Current Tier'
-                      ) : (
-                        <>
-                          Initialize
-                          <ArrowRight size={16} />
-                        </>
-                      )}
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-12 p-6 rounded-2xl bg-[#00FF00]/5 border border-[#00FF00]/20 flex flex-col md:flex-row items-center justify-between gap-6">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-[#00FF00]/10">
-                    <Lock size={24} className="text-[#00FF00]" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold">Fair Market Value Guarantee</h4>
-                    <p className="text-xs text-white/50">Our pricing is dynamically adjusted to ensure sustainable AI processing and continuous realm expansion.</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 text-xs font-mono text-[#00FF00]">
-                  <CreditCard size={16} />
-                  SECURE_STRIPE_ENCRYPTION_ACTIVE
-                </div>
-              </div>
-            </div>
-          </motion.div>
+            <X className="w-8 h-8" />
+          </button>
         </div>
-      )}
-    </AnimatePresence>
+
+        {/* Pricing Grid */}
+        <div className="flex-1 p-10 overflow-y-auto custom-scrollbar">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {TIERS.map((tier) => (
+              <motion.div
+                key={tier.id}
+                whileHover={{ scale: 1.02 }}
+                className="relative p-8 rounded-3xl border border-white/10 bg-white/5 hover:border-orange-500/50 hover:bg-white/10 transition-all flex flex-col h-full group"
+              >
+                <div className="flex items-center justify-between mb-8">
+                  <div className="w-10 h-10 rounded-xl bg-orange-900/20 flex items-center justify-center text-orange-500 group-hover:scale-110 transition-transform">
+                    {tier.id === 'initiate' ? <Mail className="w-5 h-5" /> :
+                     tier.id === 'automator' ? <BarChart3 className="w-5 h-5" /> :
+                     tier.id === 'architect' ? <Briefcase className="w-5 h-5" /> :
+                     <Rocket className="w-5 h-5" />}
+                  </div>
+                  <div className="text-right">
+                    <span className="text-2xl font-bold text-white tracking-tighter italic">${tier.price}</span>
+                    <span className="text-[10px] text-orange-400/60 font-mono uppercase block">/mo</span>
+                  </div>
+                </div>
+
+                <h3 className="text-xl font-bold text-white uppercase italic mb-3">{tier.name}</h3>
+                <p className="text-xs text-orange-100/60 font-mono leading-relaxed mb-8 flex-1">{tier.description}</p>
+
+                <div className="space-y-4 mb-10">
+                  {tier.features.map((feature, i) => (
+                    <div key={i} className="flex items-center gap-3 text-[10px] text-orange-100/80 font-mono uppercase">
+                      <Check className="w-3 h-3 text-orange-500 shrink-0" />
+                      {feature}
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => onUpgrade(tier.id)}
+                  className="w-full py-4 rounded-xl bg-orange-600 text-white font-bold uppercase italic tracking-widest shadow-lg shadow-orange-600/20 hover:bg-orange-500 hover:-translate-y-1 transition-all flex items-center justify-center gap-3"
+                >
+                  <Zap className="w-4 h-4" />
+                  Select Plan
+                </button>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="p-8 bg-black/40 border-t border-orange-900/20 flex justify-center">
+          <div className="flex items-center gap-3 text-orange-500/40 text-[10px] font-mono uppercase tracking-[0.4em]">
+            <ArrowRight className="w-3 h-3" />
+            <span>Secure Checkout • Instant Neural Activation</span>
+            <ArrowRight className="w-3 h-3" />
+          </div>
+        </div>
+      </div>
+    </motion.div>
   );
 };
 

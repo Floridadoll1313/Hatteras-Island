@@ -1,203 +1,309 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Waves, Zap, Trophy, X } from 'lucide-react';
+import { Waves, X, Trophy, Zap, Heart, Wind, Skull } from 'lucide-react';
 
 interface SurfingGameProps {
   onComplete: (score: number) => void;
   onClose: () => void;
 }
 
-export default function SurfingGame({ onComplete, onClose }: SurfingGameProps) {
+const SurfingGame: React.FC<SurfingGameProps> = ({ onComplete, onClose }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [gameState, setGameState] = useState<'start' | 'playing' | 'gameOver'>('start');
   const [score, setScore] = useState(0);
-  const [gameOver, setGameOver] = useState(false);
-  const [gameStarted, setGameStarted] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(15);
+  const [highScore, setHighScore] = useState(0);
+  const [lives, setLives] = useState(3);
 
-  const playerRef = useRef({ x: 50, y: 150, width: 40, height: 20 });
-  const obstaclesRef = useRef<{ x: number, y: number, width: number, height: number }[]>([]);
-  const frameRef = useRef(0);
+  // Game constants
+  const playerWidth = 40;
+  const playerHeight = 60;
+  const obstacleWidth = 30;
+  const obstacleHeight = 30;
+  const gravity = 0.5;
+  const jumpStrength = -10;
 
   useEffect(() => {
-    if (!gameStarted || gameOver) return;
+    if (gameState !== 'playing') return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const handleMouseMove = (e: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      const mouseY = e.clientY - rect.top;
-      playerRef.current.y = Math.max(0, Math.min(canvas.height - playerRef.current.height, mouseY));
+    let animationFrameId: number;
+    let playerY = canvas.height / 2;
+    let playerVelocity = 0;
+    let obstacles: { x: number; y: number; type: 'shark' | 'rock' | 'trash' }[] = [];
+    let frameCount = 0;
+    let currentScore = 0;
+    let currentLives = 3;
+
+    const handleInput = (e: KeyboardEvent | MouseEvent | TouchEvent) => {
+      if (e.type === 'keydown' && (e as KeyboardEvent).code !== 'Space') return;
+      playerVelocity = jumpStrength;
     };
 
-    canvas.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('keydown', handleInput);
+    canvas.addEventListener('mousedown', handleInput);
+    canvas.addEventListener('touchstart', handleInput);
 
-    const update = () => {
-      frameRef.current++;
-      
-      // Spawn obstacles
-      if (frameRef.current % 60 === 0) {
-        obstaclesRef.current.push({
-          x: canvas.width,
-          y: Math.random() * (canvas.height - 30),
-          width: 30,
-          height: 30
-        });
-      }
-
-      // Move obstacles
-      obstaclesRef.current = obstaclesRef.current.map(obs => ({ ...obs, x: obs.x - 5 }));
-      
-      // Collision detection
-      const player = playerRef.current;
-      for (const obs of obstaclesRef.current) {
-        if (
-          player.x < obs.x + obs.width &&
-          player.x + player.width > obs.x &&
-          player.y < obs.y + obs.height &&
-          player.y + player.height > obs.y
-        ) {
-          setGameOver(true);
-          return;
-        }
-      }
-
-      // Cleanup off-screen obstacles
-      obstaclesRef.current = (obstaclesRef.current || []).filter(obs => obs.x + obs.width > 0);
-      
-      setScore(prev => prev + 1);
-
-      // Draw
+    const gameLoop = () => {
+      frameCount++;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
-      // Draw background waves
-      ctx.strokeStyle = 'rgba(0, 224, 255, 0.1)';
+
+      // Background - Waves effect
+      ctx.strokeStyle = 'rgba(59, 130, 246, 0.2)';
       ctx.lineWidth = 2;
       for (let i = 0; i < 5; i++) {
         ctx.beginPath();
-        ctx.moveTo(0, 50 + i * 50);
-        for (let x = 0; x < canvas.width; x++) {
-          ctx.lineTo(x, 50 + i * 50 + Math.sin(x * 0.02 + frameRef.current * 0.05) * 10);
-        }
+        ctx.moveTo(0, 100 + i * 50 + Math.sin(frameCount * 0.05 + i) * 20);
+        ctx.lineTo(canvas.width, 100 + i * 50 + Math.sin(frameCount * 0.05 + i) * 20);
         ctx.stroke();
       }
 
-      // Draw player (surfboard)
-      ctx.fillStyle = '#00E0FF';
-      ctx.beginPath();
-      ctx.ellipse(player.x + player.width/2, player.y + player.height/2, player.width/2, player.height/2, 0, 0, Math.PI * 2);
-      ctx.fill();
-      
-      // Trail
-      ctx.shadowBlur = 15;
-      ctx.shadowColor = '#00E0FF';
-      ctx.stroke();
+      // Player physics
+      playerVelocity += gravity;
+      playerY += playerVelocity;
 
-      // Draw obstacles (rogue waves/debris)
-      ctx.fillStyle = '#FF4444';
-      ctx.shadowColor = '#FF4444';
-      for (const obs of obstaclesRef.current) {
-        ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+      // Boundaries
+      if (playerY < 0) {
+        playerY = 0;
+        playerVelocity = 0;
+      }
+      if (playerY > canvas.height - playerHeight) {
+        playerY = canvas.height - playerHeight;
+        playerVelocity = 0;
       }
 
-      requestAnimationFrame(update);
-    };
+      // Draw Player (Surfer)
+      ctx.fillStyle = '#f97316'; // Orange
+      ctx.beginPath();
+      ctx.roundRect(50, playerY, playerWidth, playerHeight, 10);
+      ctx.fill();
+      
+      // Surfboard detail
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(45, playerY + playerHeight - 10, playerWidth + 10, 5);
 
-    const animId = requestAnimationFrame(update);
-    return () => {
-      canvas.removeEventListener('mousemove', handleMouseMove);
-      cancelAnimationFrame(animId);
-    };
-  }, [gameStarted, gameOver]);
+      // Spawn obstacles
+      if (frameCount % 100 === 0) {
+        obstacles.push({
+          x: canvas.width,
+          y: Math.random() * (canvas.height - obstacleHeight),
+          type: Math.random() > 0.5 ? 'shark' : 'rock'
+        });
+      }
 
-  useEffect(() => {
-    if (!gameStarted || gameOver) return;
-    const timer = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          setGameOver(true);
-          return 0;
+      // Update and draw obstacles
+      obstacles.forEach((obs, index) => {
+        obs.x -= 5 + (currentScore / 100); // Speed up over time
+
+        ctx.fillStyle = obs.type === 'shark' ? '#ef4444' : '#9ca3af';
+        ctx.beginPath();
+        ctx.arc(obs.x + obstacleWidth / 2, obs.y + obstacleHeight / 2, obstacleWidth / 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Collision detection
+        if (
+          50 < obs.x + obstacleWidth &&
+          50 + playerWidth > obs.x &&
+          playerY < obs.y + obstacleHeight &&
+          playerY + playerHeight > obs.y
+        ) {
+          obstacles.splice(index, 1);
+          currentLives--;
+          setLives(currentLives);
+          if (currentLives <= 0) {
+            setGameState('gameOver');
+            onComplete(currentScore);
+          }
         }
-        return prev - 1;
+
+        // Remove off-screen obstacles
+        if (obs.x < -obstacleWidth) {
+          obstacles.splice(index, 1);
+          currentScore += 10;
+          setScore(currentScore);
+        }
       });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [gameStarted, gameOver]);
+
+      if (gameState === 'playing') {
+        animationFrameId = requestAnimationFrame(gameLoop);
+      }
+    };
+
+    gameLoop();
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      window.removeEventListener('keydown', handleInput);
+      canvas.removeEventListener('mousedown', handleInput);
+      canvas.removeEventListener('touchstart', handleInput);
+    };
+  }, [gameState]);
+
+  const startGame = () => {
+    setGameState('playing');
+    setScore(0);
+    setLives(3);
+  };
 
   return (
-    <motion.div
+    <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[110] bg-black/95 backdrop-blur-2xl flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-xl p-4"
     >
-      <div className="max-w-3xl w-full space-y-8 text-center">
-        {!gameStarted ? (
-          <div className="space-y-6">
-            <div className="p-6 rounded-full bg-[#00E0FF]/10 w-24 h-24 mx-auto flex items-center justify-center border border-[#00E0FF]/30">
-              <Waves size={48} className="text-[#00E0FF]" />
+      <div className="relative w-full max-w-4xl bg-[#0a0a0a] border border-white/10 rounded-3xl overflow-hidden shadow-2xl shadow-blue-500/10">
+        {/* Header */}
+        <div className="p-6 border-b border-white/10 flex items-center justify-between bg-gradient-to-r from-blue-500/10 to-transparent">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-blue-500/20 rounded-2xl border border-blue-500/30">
+              <Waves className="w-6 h-6 text-blue-400" />
             </div>
-            <div className="space-y-2">
-              <h2 className="text-4xl font-bold tracking-tighter uppercase italic">Surf the Data Stream</h2>
-              <p className="text-white/40 font-mono text-sm uppercase tracking-widest">Avoid rogue waves to earn Sand Dollars</p>
+            <div>
+              <h2 className="text-2xl font-black tracking-tighter uppercase italic">Hatteras Surf Break</h2>
+              <p className="text-[10px] font-mono text-blue-400/60 uppercase tracking-widest">Master the AI Waves</p>
             </div>
-            <button
-              onClick={() => setGameStarted(true)}
-              className="px-12 py-4 bg-[#00E0FF] text-black rounded-2xl font-bold hover:bg-[#00E0FF]/80 transition-all uppercase tracking-tighter text-xl"
-            >
-              Catch the Wave
-            </button>
           </div>
-        ) : (
-          <div className="space-y-4 relative">
-            <div className="flex justify-between items-center px-4 font-mono text-xs uppercase tracking-widest text-[#00E0FF]">
-              <div className="flex items-center gap-2">
-                <Zap size={14} />
-                Score: {score}
+          <button 
+            onClick={onClose}
+            className="p-2 hover:bg-white/5 rounded-full transition-colors"
+          >
+            <X className="w-6 h-6 text-gray-500" />
+          </button>
+        </div>
+
+        {/* Game Area */}
+        <div className="relative aspect-video bg-[#050505] overflow-hidden">
+          <canvas 
+            ref={canvasRef}
+            width={800}
+            height={450}
+            className="w-full h-full cursor-pointer"
+          />
+
+          {/* HUD */}
+          <div className="absolute top-6 left-6 right-6 flex justify-between items-start pointer-events-none">
+            <div className="flex gap-4">
+              <div className="px-4 py-2 bg-black/60 backdrop-blur-md rounded-xl border border-white/10">
+                <div className="text-[10px] font-mono text-gray-500 uppercase tracking-widest mb-1">Score</div>
+                <div className="text-xl font-black text-blue-400">{score}</div>
               </div>
-              <div className="flex items-center gap-2">
-                Time: {timeLeft}s
+              <div className="px-4 py-2 bg-black/60 backdrop-blur-md rounded-xl border border-white/10">
+                <div className="text-[10px] font-mono text-gray-500 uppercase tracking-widest mb-1">Lives</div>
+                <div className="flex gap-1">
+                  {[...Array(3)].map((_, i) => (
+                    <Heart 
+                      key={i} 
+                      className={`w-4 h-4 ${i < lives ? 'text-red-500 fill-red-500' : 'text-gray-800'}`} 
+                    />
+                  ))}
+                </div>
               </div>
             </div>
-            
-            <canvas
-              ref={canvasRef}
-              width={800}
-              height={400}
-              className="w-full bg-black/40 rounded-[32px] border border-white/10 cursor-none"
-            />
+            <div className="px-4 py-2 bg-black/60 backdrop-blur-md rounded-xl border border-white/10">
+              <div className="text-[10px] font-mono text-gray-500 uppercase tracking-widest mb-1">High Score</div>
+              <div className="text-xl font-black text-orange-500">{highScore}</div>
+            </div>
+          </div>
 
-            {gameOver && (
-              <motion.div
+          {/* Overlays */}
+          <AnimatePresence>
+            {gameState === 'start' && (
+              <motion.div 
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="absolute inset-0 bg-black/80 backdrop-blur-sm rounded-[32px] flex flex-col items-center justify-center space-y-6"
+                exit={{ opacity: 0, scale: 1.1 }}
+                className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm"
               >
-                <Trophy size={64} className="text-[#FFD700]" />
-                <div className="space-y-1">
-                  <h3 className="text-3xl font-bold uppercase tracking-tighter">Session Complete</h3>
-                  <p className="text-white/40 font-mono text-sm uppercase tracking-widest">You earned {Math.floor(score / 10)} Sand Dollars</p>
+                <div className="text-center space-y-8 max-w-md px-6">
+                  <div className="space-y-2">
+                    <h3 className="text-4xl font-black tracking-tighter uppercase italic">Ready to Shred?</h3>
+                    <p className="text-gray-400 text-sm">
+                      Dodge the sharks and rocks to earn Sand Dollars. Use [SPACE] or [CLICK] to catch air.
+                    </p>
+                  </div>
+                  <button
+                    onClick={startGame}
+                    className="group relative px-12 py-4 bg-blue-500 text-black font-black uppercase tracking-widest rounded-full hover:bg-blue-400 transition-all overflow-hidden"
+                  >
+                    <span className="relative z-10">Drop In</span>
+                    <motion.div 
+                      className="absolute inset-0 bg-white/20"
+                      initial={{ x: '-100%' }}
+                      whileHover={{ x: '100%' }}
+                      transition={{ duration: 0.5 }}
+                    />
+                  </button>
                 </div>
-                <button
-                  onClick={() => onComplete(Math.floor(score / 10))}
-                  className="px-8 py-3 bg-[#00E0FF] text-black rounded-xl font-bold hover:bg-[#00E0FF]/80 transition-all uppercase text-sm"
-                >
-                  Claim Rewards
-                </button>
               </motion.div>
             )}
+
+            {gameState === 'gameOver' && (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 backdrop-blur-md"
+              >
+                <div className="text-center space-y-8">
+                  <div className="p-6 bg-red-500/20 rounded-full border border-red-500/30 inline-block">
+                    <Skull className="w-12 h-12 text-red-500" />
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-5xl font-black tracking-tighter uppercase italic text-red-500">Wiped Out!</h3>
+                    <p className="text-gray-400">The ocean was too rough this time.</p>
+                  </div>
+                  <div className="flex gap-8 justify-center">
+                    <div className="text-center">
+                      <div className="text-[10px] font-mono text-gray-500 uppercase tracking-widest mb-1">Final Score</div>
+                      <div className="text-4xl font-black text-white">{score}</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-[10px] font-mono text-gray-500 uppercase tracking-widest mb-1">Earned</div>
+                      <div className="text-4xl font-black text-blue-400">{Math.floor(score / 10)} SD</div>
+                    </div>
+                  </div>
+                  <div className="flex gap-4 justify-center">
+                    <button
+                      onClick={startGame}
+                      className="px-8 py-3 bg-white text-black font-black uppercase tracking-widest rounded-full hover:bg-gray-200 transition-all"
+                    >
+                      Try Again
+                    </button>
+                    <button
+                      onClick={onClose}
+                      className="px-8 py-3 border border-white/20 text-white font-black uppercase tracking-widest rounded-full hover:bg-white/5 transition-all"
+                    >
+                      Return to Island
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Footer */}
+        <div className="p-6 bg-white/5 flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2 text-gray-500">
+              <Wind className="w-4 h-4" />
+              <span className="text-[10px] font-mono uppercase tracking-widest">Wind: 15kts NE</span>
+            </div>
+            <div className="flex items-center gap-2 text-gray-500">
+              <Zap className="w-4 h-4 text-yellow-500" />
+              <span className="text-[10px] font-mono uppercase tracking-widest">AI Wave: Level 1</span>
+            </div>
           </div>
-        )}
-        
-        <button 
-          onClick={onClose}
-          className="absolute top-8 right-8 p-3 rounded-full hover:bg-white/5 transition-colors text-white/40"
-        >
-          <X size={24} />
-        </button>
+          <div className="text-[10px] font-mono text-gray-600 uppercase tracking-widest">
+            Powered by Hatteras AI Core
+          </div>
+        </div>
       </div>
     </motion.div>
   );
-}
+};
+
+export default SurfingGame;

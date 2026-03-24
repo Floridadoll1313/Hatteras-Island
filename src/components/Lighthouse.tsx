@@ -1,123 +1,178 @@
 import React from 'react';
-import { motion } from 'motion/react';
-import { Anchor, Zap, Shield, Database, ArrowUp, X } from 'lucide-react';
-import { GameState, LighthouseUpgrade } from '../types';
+import { motion, AnimatePresence } from 'motion/react';
+import { X, Anchor, Zap, CheckCircle2, Lock, ArrowRight, Brain, MapPin, Waves } from 'lucide-react';
+import { LighthouseState, LighthouseUpgrade } from '../types';
 
 interface LighthouseProps {
-  gameState: GameState;
+  state: LighthouseState;
+  sandDollars: number;
+  onUpgrade: (upgradeId: string) => void;
   onClose: () => void;
-  onUpgrade: (upgrade: LighthouseUpgrade) => void;
 }
 
-const LIGHTHOUSE_UPGRADES: LighthouseUpgrade[] = [
-  { id: 'neural_antenna', name: 'Neural Antenna', description: 'Increases AI evolution speed by 10%.', level: 1, cost: 200, bonus: 'Evolution Speed +10%' },
-  { id: 'gear_rack', name: 'Gear Rack', description: 'Increases inventory capacity.', level: 1, cost: 150, bonus: 'Inventory +5' },
-  { id: 'solar_array', name: 'Solar Array', description: 'Reduces energy costs for AI actions.', level: 1, cost: 300, bonus: 'Efficiency +15%' },
-  { id: 'tide_monitor', name: 'Tide Monitor', description: 'Provides advanced warning of tide changes.', level: 1, cost: 100, bonus: 'Tide Foresight' }
+const UPGRADES: LighthouseUpgrade[] = [
+  { id: 'range', name: 'Signal Range', description: 'Increase the range of your island signals.', level: 1, cost: 10, bonus: '+20% Signal Range' },
+  { id: 'storage', name: 'Storage Capacity', description: 'Expand your island storage capacity.', level: 1, cost: 15, bonus: '+50% Storage Capacity' },
+  { id: 'defense', name: 'Defense Level', description: 'Strengthen your island defenses.', level: 1, cost: 20, bonus: '+10% Defense' },
+  { id: 'efficiency', name: 'Energy Efficiency', description: 'Optimize your island energy usage.', level: 1, cost: 25, bonus: '+15% Energy Efficiency' }
 ];
 
-export default function Lighthouse({ gameState, onClose, onUpgrade }: LighthouseProps) {
+const Lighthouse: React.FC<LighthouseProps> = ({
+  state,
+  sandDollars,
+  onUpgrade,
+  onClose
+}) => {
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl flex items-center justify-center p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-8 bg-black/90 backdrop-blur-2xl"
     >
-      <div className="max-w-4xl w-full bg-[#050505] border border-white/10 rounded-[32px] overflow-hidden flex flex-col max-h-[90vh]">
-        <div className="p-8 border-bottom border-white/10 flex items-center justify-between bg-gradient-to-r from-[#00E0FF]/5 to-transparent">
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-2xl bg-[#00E0FF]/10">
-              <Anchor size={24} className="text-[#00E0FF]" />
+      <div className="relative w-full max-w-5xl max-h-[80vh] bg-[#0a0a0a] border border-orange-900/30 rounded-[3rem] shadow-2xl flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="p-10 border-b border-orange-900/20 bg-gradient-to-r from-orange-900/10 to-transparent flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <div className="w-16 h-16 rounded-2xl bg-orange-600 flex items-center justify-center shadow-lg shadow-orange-600/20">
+              <Anchor className="text-white w-8 h-8" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold tracking-tighter uppercase">The Lighthouse</h2>
-              <p className="text-white/40 text-xs font-mono uppercase tracking-widest">Base Level {gameState.lighthouse.level}</p>
+              <h2 className="text-4xl font-bold text-white tracking-tighter uppercase italic">Lighthouse Keeper</h2>
+              <p className="text-orange-400 font-mono text-xs uppercase tracking-[0.3em] mt-1">Hatteras Island • Coastal Beacon</p>
             </div>
           </div>
-          <button 
-            onClick={onClose}
-            className="p-2 rounded-full hover:bg-white/5 transition-colors"
-          >
-            <X size={24} className="text-white/40" />
-          </button>
+          <div className="flex items-center gap-6">
+            <div className="px-6 py-3 rounded-2xl bg-orange-900/20 border border-orange-500/30 flex items-center gap-3">
+              <Zap className="w-5 h-5 text-orange-400 fill-orange-400" />
+              <span className="text-xl font-bold text-white">{sandDollars}</span>
+              <span className="text-[10px] text-orange-400/60 font-mono uppercase tracking-widest">Sand Dollars</span>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-orange-900/20 rounded-full transition-colors text-orange-400"
+            >
+              <X className="w-8 h-8" />
+            </button>
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-6">
-            <div className="p-6 rounded-3xl bg-white/5 border border-white/10 space-y-4">
-              <h3 className="text-sm font-bold uppercase tracking-widest text-[#00E0FF]">Base Status</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 rounded-2xl bg-black/40 border border-white/5">
-                  <div className="text-[10px] font-mono text-white/40 uppercase mb-1">Sand Dollars</div>
-                  <div className="text-xl font-bold text-[#FFD700]">{gameState.sandDollars}</div>
-                </div>
-                <div className="p-4 rounded-2xl bg-black/40 border border-white/5">
-                  <div className="text-[10px] font-mono text-white/40 uppercase mb-1">Upgrades</div>
-                  <div className="text-xl font-bold text-white">{gameState.lighthouse.upgrades.length}</div>
-                </div>
+        {/* Lighthouse Status Grid */}
+        <div className="flex-1 p-10 overflow-y-auto custom-scrollbar">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-12">
+            <div className="p-8 bg-white/5 border border-white/10 rounded-3xl backdrop-blur-md">
+              <div className="flex items-center gap-3 mb-8">
+                <MapPin className="w-5 h-5 text-orange-500" />
+                <h3 className="text-sm font-bold text-white uppercase italic tracking-widest">Beacon Status</h3>
               </div>
-            </div>
-
-            <div className="aspect-video rounded-3xl overflow-hidden border border-white/10 relative">
-              <img 
-                src="https://picsum.photos/seed/lighthouse/800/450" 
-                alt="Lighthouse"
-                className="w-full h-full object-cover opacity-50"
-                referrerPolicy="no-referrer"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent" />
-              <div className="absolute bottom-6 left-6">
-                <div className="text-xs font-mono text-[#00E0FF] uppercase tracking-[0.3em] mb-1">Location</div>
-                <div className="text-xl font-bold uppercase tracking-tighter">Hatteras Point</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <h3 className="text-sm font-bold uppercase tracking-widest text-[#00E0FF]">Available Upgrades</h3>
-            {LIGHTHOUSE_UPGRADES.map((upgrade) => {
-              const isOwned = gameState.lighthouse.upgrades.includes(upgrade.id);
-              const canAfford = gameState.sandDollars >= upgrade.cost;
-
-              return (
-                <div 
-                  key={upgrade.id}
-                  className={`p-4 rounded-2xl border transition-all ${
-                    isOwned 
-                      ? 'bg-[#00FF00]/5 border-[#00FF00]/20' 
-                      : 'bg-white/5 border-white/10 hover:border-[#00E0FF]/30'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="space-y-1">
-                      <div className="text-sm font-bold flex items-center gap-2">
-                        {upgrade.name}
-                        {isOwned && <span className="text-[8px] font-mono bg-[#00FF00]/20 text-[#00FF00] px-1.5 py-0.5 rounded uppercase">Active</span>}
-                      </div>
-                      <p className="text-xs text-white/40 leading-relaxed">{upgrade.description}</p>
-                      <div className="text-[10px] font-mono text-[#00E0FF] uppercase tracking-wider">{upgrade.bonus}</div>
-                    </div>
-                    {!isOwned && (
-                      <button
-                        onClick={() => onUpgrade(upgrade)}
-                        disabled={!canAfford}
-                        className={`px-4 py-2 rounded-xl text-[10px] font-mono uppercase transition-all ${
-                          canAfford 
-                            ? 'bg-[#00E0FF]/10 text-[#00E0FF] hover:bg-[#00E0FF]/20 border border-[#00E0FF]/30' 
-                            : 'bg-white/5 text-white/20 border border-white/5 cursor-not-allowed'
-                        }`}
-                      >
-                        {upgrade.cost} SD
-                      </button>
-                    )}
+              <div className="space-y-6">
+                <div className="flex flex-col">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] text-orange-400/60 font-mono uppercase tracking-widest">Signal Range</span>
+                    <span className="text-[10px] text-orange-100 font-mono">{state.signalRange}x</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-orange-900/30 rounded-full overflow-hidden">
+                    <motion.div 
+                      className="h-full bg-orange-500"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(state.signalRange / 5) * 100}%` }}
+                    />
                   </div>
                 </div>
-              );
-            })}
+                <div className="flex flex-col">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] text-orange-400/60 font-mono uppercase tracking-widest">Storage Capacity</span>
+                    <span className="text-[10px] text-orange-100 font-mono">{state.storageCapacity}x</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-orange-900/30 rounded-full overflow-hidden">
+                    <motion.div 
+                      className="h-full bg-orange-500"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(state.storageCapacity / 5) * 100}%` }}
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-col">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] text-orange-400/60 font-mono uppercase tracking-widest">Defense Level</span>
+                    <span className="text-[10px] text-orange-100 font-mono">{state.defenseLevel}x</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-orange-900/30 rounded-full overflow-hidden">
+                    <motion.div 
+                      className="h-full bg-orange-500"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(state.defenseLevel / 5) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-6">
+              {UPGRADES.map((upgrade) => {
+                const isOwned = state.upgrades.includes(upgrade.id);
+                const canAfford = sandDollars >= upgrade.cost;
+
+                return (
+                  <motion.div
+                    key={upgrade.id}
+                    whileHover={{ scale: 1.02 }}
+                    className={`relative p-6 rounded-2xl border transition-all duration-300 flex items-center gap-6 text-left ${
+                      isOwned 
+                        ? 'bg-orange-600/10 border-orange-500/50 shadow-[0_0_30px_rgba(234,88,12,0.1)]' 
+                        : 'bg-white/5 border-white/10 hover:border-orange-500/30 hover:bg-white/10'
+                    }`}
+                  >
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                      isOwned ? 'bg-orange-600 text-white' : 'bg-orange-900/20 text-orange-500'
+                    }`}>
+                      <Waves className="w-6 h-6" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-sm font-bold text-white uppercase italic">{upgrade.name}</h4>
+                      <p className="text-[10px] text-orange-400/60 font-mono leading-relaxed mt-1">{upgrade.description}</p>
+                    </div>
+                    <button
+                      disabled={isOwned || !canAfford}
+                      onClick={() => onUpgrade(upgrade.id)}
+                      className={`px-6 py-2 rounded-lg font-bold uppercase italic tracking-widest transition-all flex items-center justify-center gap-2 ${
+                        isOwned 
+                          ? 'bg-orange-600/10 text-orange-400/40 cursor-default border border-orange-500/20' 
+                          : canAfford
+                            ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20 hover:bg-orange-500 hover:-translate-y-1'
+                            : 'bg-white/5 text-white/20 cursor-not-allowed border border-white/5'
+                      }`}
+                    >
+                      {isOwned ? 'Active' : canAfford ? (
+                        <>
+                          <Zap className="w-3 h-3 fill-current" />
+                          {upgrade.cost}
+                        </>
+                      ) : (
+                        <>
+                          <Lock className="w-3 h-3" />
+                          {upgrade.cost}
+                        </>
+                      )}
+                    </button>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="p-8 bg-black/40 border-t border-orange-900/20 flex justify-center">
+          <div className="flex items-center gap-3 text-orange-500/40 text-[10px] font-mono uppercase tracking-[0.4em]">
+            <ArrowRight className="w-3 h-3" />
+            <span>Protect the Coast • Guide the Travelers</span>
+            <ArrowRight className="w-3 h-3" />
           </div>
         </div>
       </div>
     </motion.div>
   );
-}
+};
+
+export default Lighthouse;

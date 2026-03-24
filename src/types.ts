@@ -1,124 +1,69 @@
-export interface RealmNode {
-  id: string;
-  name: string;
-  description: string;
-  environment: string;
-  entities: string[];
-  options: RealmOption[];
-  lore: string;
-  item?: InventoryItem;
-  enemy?: Enemy;
-  npc?: NPC;
-  imageUrl?: string;
-}
+import { User } from 'firebase/auth';
 
-export interface Enemy {
-  id: string;
-  name: string;
-  description: string;
-  health: number;
-  maxHealth: number;
-  attack: number;
-  defense: number;
-  abilities: string[];
-}
-
-export interface CombatLogEntry {
-  message: string;
-  type: 'player' | 'enemy' | 'system';
-  timestamp: number;
-}
-
-export interface CombatState {
-  enemy: Enemy;
-  playerHealth: number;
-  playerMaxHealth: number;
-  turn: 'player' | 'enemy';
-  logs: CombatLogEntry[];
-  isDefending: boolean;
-  enemyLearningLevel: number;
-  playerActionHistory: string[];
-}
-
-export interface RealmOption {
-  label: string;
-  action: string;
-  targetType: 'explore' | 'interact' | 'analyze';
-}
-
-export interface BranchingPath {
-  id: string;
-  title: string;
-  consequence: string;
-  riskLevel: 'low' | 'medium' | 'high' | 'critical';
-  potentialReward: string;
-}
-
-export type SubscriptionTier = 'none' | 'initiate' | 'automator' | 'architect' | 'omniscient';
-
-export type AIStage = 'Tourist' | 'Weekender' | 'Local' | 'Islander' | 'OBX Legend';
+export type AIStage = 'nascent' | 'aware' | 'sentient' | 'transcendent' | 'singularity';
 
 export interface AITrait {
   id: string;
   name: string;
   description: string;
-  threshold: number;
-  bonus?: string;
+  bonus: string;
 }
 
 export interface InventoryItem {
   id: string;
   name: string;
   description: string;
-  type: 'artifact' | 'tool' | 'data_fragment' | 'material';
-  rarity: 'common' | 'rare' | 'exotic' | 'legendary';
-  effect?: string;
-  passiveBonus?: string;
+  type: 'resource' | 'tool' | 'artifact' | 'consumable';
+  rarity: 'common' | 'uncommon' | 'rare' | 'legendary';
+  icon: string;
 }
 
-export interface WorldEvent {
+export interface BranchingPath {
+  id: string;
+  label: string;
+  description: string;
+  risk: 'low' | 'medium' | 'high' | 'extreme';
+  riskLevel?: 'low' | 'medium' | 'high' | 'extreme'; // Compatibility
+  title?: string; // Compatibility
+  consequence?: string; // Compatibility
+  requirement?: string;
+}
+
+export interface Realm {
   id: string;
   name: string;
   description: string;
-  duration: number; // Number of transitions it lasts
-  type: 'anomaly' | 'surge' | 'corruption' | 'blessing';
-  effect: string;
+  lore: string;
+  entities: string[];
+  options: string[];
+  paths: BranchingPath[];
+  discoveredItems: string[];
+  threats: string[];
+  npcs: string[];
 }
 
-export interface AIResponse {
-  id: string;
-  type: 'text' | 'image' | 'video' | 'audio' | 'maps';
-  content: string;
+export type RealmNode = Realm; // Compatibility
+
+export interface CombatLogEntry {
   timestamp: number;
-  metadata?: any;
+  type: 'player' | 'enemy' | 'system';
+  message: string;
 }
 
-export interface Task {
-  id: string;
-  title: string;
-  description: string;
-  completed: boolean;
-  reward?: number;
-}
-
-export interface CraftingRecipe {
-  id: string;
-  name: string;
-  description: string;
-  ingredients: { itemId: string; count: number }[];
-  result: InventoryItem;
-}
-
-export type WeatherType = 'clear' | 'stormy' | 'foggy' | 'heatwave' | 'hurricane';
-export type TideState = 'low' | 'high' | 'incoming' | 'outgoing';
-
-export interface NPC {
-  id: string;
-  name: string;
-  role: string;
-  description: string;
-  dialogue: string[];
-  trades?: { input: string; output: InventoryItem }[];
+export interface CombatState {
+  turn: 'player' | 'enemy';
+  playerHealth: number;
+  playerMaxHealth: number;
+  enemy: {
+    name: string;
+    health: number;
+    maxHealth: number;
+    abilities: string[];
+  };
+  logs: CombatLogEntry[];
+  isDefending: boolean;
+  victory?: boolean;
+  defeat?: boolean;
 }
 
 export interface LighthouseUpgrade {
@@ -132,61 +77,155 @@ export interface LighthouseUpgrade {
 
 export interface LighthouseState {
   level: number;
-  upgrades: string[];
-  lastVisited: number;
   signalRange: number;
   storageCapacity: number;
   defenseLevel: number;
-  energyEfficiency: number;
+  upgrades: string[];
+  lastVisited?: number;
+  energyEfficiency?: number;
 }
 
-export type FactionType = 'none' | 'preservationist' | 'explorer' | 'reclaimer';
+export type ContestantStatus = 'active' | 'voted_out' | 'medevac' | 'eliminated';
 
-export interface SurfingGameState {
-  isActive: boolean;
-  score: number;
-  multiplier: number;
-  distance: number;
+export interface Contestant {
+  id: string;
+  name: string;
+  archetype: string;
+  threatLevel: number;
+  loyalty: number;
+  strategicAbility: number;
+  physicalAbility: number;
+  status: ContestantStatus;
+  isPlayer: boolean;
+  aiModel?: string;
+}
+
+export interface Alliance {
+  id: string;
+  name: string;
+  members: string[]; // contestant IDs
+  strength: number;
+  trust: number;
+}
+
+export interface SurvivorChallenge {
+  id: string;
+  title: string;
+  type: 'physical' | 'strategic' | 'social' | 'reward' | 'immunity';
+  description: string;
+  difficulty: number;
+  reward: number;
+}
+
+export interface AIKnowledgePiece {
+  id: string;
+  title: string;
+  description: string;
+  category: 'social' | 'technical' | 'strategic' | 'survival';
+  timestamp: number;
+}
+
+export interface BusinessAIChallenge {
+  id: string;
+  title: string;
+  problem: string;
+  solutionHint: string;
+  category: 'marketing' | 'operations' | 'customer_service' | 'finance';
+  difficulty: 'easy' | 'medium' | 'hard';
+}
+
+export interface HiddenIdol {
+  id: string;
+  location: string;
+  isFound: boolean;
+  challengeId: string;
+}
+
+export interface SurvivorState {
+  day: number;
+  tribe: string;
+  contestants: Contestant[];
+  alliances: Alliance[];
+  challenges: SurvivorChallenge[];
+  aiLearningProgress: number;
+  eliminatedCount: number;
+  eliminated?: number; // Compatibility
+  immunityIdolFound: boolean;
+  idols: HiddenIdol[];
+  currentBusinessChallenge: BusinessAIChallenge | null;
+  aiPiecesCollected: string[];
+  aiKnowledgeBank: AIKnowledgePiece[];
+  campMorale: number;
+  campInfrastructure: number;
+  tribeLevel: number;
+  sandDollars: number;
+}
+
+export type FactionType = 'surfers' | 'keepers' | 'pirates' | null;
+
+export interface WorldEvent {
+  id: string;
+  name: string;
+  description: string;
+  duration: number;
+  effect: string;
+}
+
+export interface BusinessState {
+  revenue: number;
+  expenses: number;
+  users: number;
+  growth: number;
 }
 
 export interface GameState {
-  currentRealm: RealmNode | null;
-  history: string[];
-  inventory: InventoryItem[];
-  activeEvents: WorldEvent[];
+  day: number;
+  vitality: number;
   sandDollars: number;
+  aiStage: AIStage;
+  evolution: number;
+  discoveredRealms: string[];
+  currentRealm: Realm;
+  inventory: string[];
   skills: string[];
-  playerStats: {
-    health: number;
-    maxHealth: number;
-    attack: number;
-    defense: number;
-  };
-  combat: CombatState | null;
-  pastCombatLogs: CombatLogEntry[][];
-  aiStatus: {
-    evolution: number;
-    stage: AIStage;
-    traits: string[]; // IDs of unlocked traits
-    memory: string[];
-  };
-  subscription: {
-    tier: SubscriptionTier;
-    status: 'active' | 'inactive' | 'pending';
-    stripeCustomerId?: string;
-  };
-  aiResponses: AIResponse[];
-  tasks: Task[];
-  weather: WeatherType;
-  tide: TideState;
-  lighthouse: LighthouseState;
+  traits: string[];
+  memory: string[];
+  activeEvents: WorldEvent[];
   faction: FactionType;
-  factionReputation: number;
-  surfingGame: SurfingGameState;
-  business: {
-    revenue: number;
-    activeClients: number;
-    workflowsSold: number;
-    reputation: number;
-  };
+  lighthouse: LighthouseState;
+  survivor: SurvivorState;
+  business?: BusinessState;
+  history?: string[]; // Compatibility
+  tasks?: any[]; // Compatibility
+  isMember?: boolean; // For members area logic
+}
+
+export interface Skill {
+  id: string;
+  name: string;
+  description: string;
+  cost: number;
+  icon: any;
+}
+
+export interface Tier {
+  id: string;
+  name: string;
+  price: number;
+  description: string;
+  features: string[];
+}
+
+export interface Faction {
+  id: string;
+  name: string;
+  description: string;
+  bonuses: string[];
+}
+
+export interface SalesItem {
+  id: string;
+  name: string;
+  description: string;
+  cost: number;
 }

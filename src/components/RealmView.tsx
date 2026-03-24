@@ -1,285 +1,377 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Loader2, 
-  Waves, 
-  Anchor, 
-  ChevronRight, 
-  Sparkles, 
-  Activity, 
-  Volume2, 
-  VolumeX, 
-  Users, 
-  ArrowRight, 
-  Compass 
+  Compass, 
+  Map as MapIcon, 
+  Shield, 
+  Zap, 
+  Skull, 
+  Info, 
+  AlertTriangle, 
+  ArrowRight,
+  Sparkles,
+  Wind,
+  Waves,
+  Trophy,
+  Brain,
+  Anchor,
+  Search,
+  Flame,
+  Users,
+  Briefcase
 } from 'lucide-react';
-import { GameState, BranchingPath, RealmOption } from '../types';
+import { Realm, BranchingPath, AIStage, SurvivorChallenge } from '../types';
 
 interface RealmViewProps {
-  gameState: GameState;
-  branchingPaths: BranchingPath[] | null;
-  transitioning: boolean;
-  handleSelectPath: (path: BranchingPath) => void;
-  setShowMemorial: (show: boolean) => void;
-  handleListen: (text: string) => void;
-  playingAudio: string | null;
-  handleAction: (option: RealmOption) => void;
-  setGameState: React.Dispatch<React.SetStateAction<GameState>>;
+  realm: Realm;
+  onPathChoice: (path: BranchingPath) => void;
+  onChallenge: (challengeId: string) => void;
+  isProcessing: boolean;
+  aiStage: AIStage;
+  onSearchForIdol?: () => void;
+  canSearch?: boolean;
 }
 
-const RealmView = ({
-  gameState,
-  branchingPaths,
-  transitioning,
-  handleSelectPath,
-  setShowMemorial,
-  handleListen,
-  playingAudio,
-  handleAction,
-  setGameState
-}: RealmViewProps) => {
-  if (!gameState.currentRealm) return null;
+const ChallengeButton: React.FC<{
+  id: string;
+  icon: any;
+  title: string;
+  description: string;
+  onChallenge: (id: string) => void;
+  isProcessing: boolean;
+}> = ({ id, icon: Icon, title, description, onChallenge, isProcessing }) => (
+  <motion.button
+    whileHover={{ scale: 1.02, y: -2 }}
+    whileTap={{ scale: 0.98 }}
+    onClick={() => onChallenge(id)}
+    disabled={isProcessing}
+    className="group relative p-6 rounded-2xl border border-yellow-500/30 bg-yellow-500/5 text-left transition-all hover:border-yellow-500/50 hover:bg-yellow-500/10 disabled:opacity-50"
+  >
+    <div className="flex items-start gap-4">
+      <div className="p-3 rounded-xl bg-yellow-500/20 text-yellow-400">
+        <Icon className="w-6 h-6" />
+      </div>
+      <div>
+        <h3 className="text-lg font-bold text-yellow-100 group-hover:text-yellow-400 transition-colors">{title}</h3>
+        <p className="text-sm text-yellow-100/60 mt-1">{description}</p>
+      </div>
+    </div>
+    <div className="mt-4 flex items-center justify-between text-[10px] font-mono uppercase tracking-widest text-yellow-500/60">
+      <span>AI Learning Opportunity</span>
+      <Sparkles className="w-3 h-3 animate-pulse" />
+    </div>
+  </motion.button>
+);
+
+const RealmView: React.FC<RealmViewProps> = ({ 
+  realm, 
+  onPathChoice, 
+  onChallenge, 
+  isProcessing, 
+  aiStage,
+  onSearchForIdol,
+  canSearch
+}) => {
+  const getRiskColor = (risk: string) => {
+    switch (risk) {
+      case 'low': return 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10';
+      case 'medium': return 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10';
+      case 'high': return 'text-orange-400 border-orange-500/30 bg-orange-500/10';
+      case 'extreme': return 'text-red-400 border-red-500/30 bg-red-500/10';
+      default: return 'text-blue-400 border-blue-500/30 bg-blue-500/10';
+    }
+  };
+
+  const getRiskIcon = (risk: string) => {
+    switch (risk) {
+      case 'low': return <Shield className="w-4 h-4" />;
+      case 'medium': return <Zap className="w-4 h-4" />;
+      case 'high': return <Skull className="w-4 h-4" />;
+      case 'extreme': return <AlertTriangle className="w-4 h-4" />;
+      default: return <Compass className="w-4 h-4" />;
+    }
+  };
 
   return (
-    <section className="flex-1 overflow-y-auto p-6 md:p-12 flex flex-col items-center">
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={gameState.currentRealm.id}
-          initial={{ opacity: 0, x: 20, filter: 'blur(10px)' }}
-          animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
-          exit={{ opacity: 0, x: -20, filter: 'blur(10px)' }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          className="max-w-3xl w-full space-y-8"
-        >
-          {/* Branching Paths Overlay */}
-          <AnimatePresence>
-            {branchingPaths && (
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="absolute inset-0 z-20 bg-black/80 backdrop-blur-md p-8 flex flex-col items-center justify-center"
-              >
-                <motion.div
-                  initial={{ scale: 0.9, y: 20 }}
-                  animate={{ scale: 1, y: 0 }}
-                  className="max-w-2xl w-full space-y-8"
-                >
-                  <div className="text-center space-y-2">
-                    <h3 className="text-2xl font-bold text-[#00E0FF] tracking-tighter uppercase">Island Divergence Detected</h3>
-                    <p className="text-white/60 text-sm font-mono italic">Choose your narrative consequence...</p>
-                  </div>
+    <div className="h-full w-full flex flex-col p-8 overflow-y-auto custom-scrollbar">
+      {/* Realm Header */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        key={realm.id}
+        className="max-w-4xl mx-auto w-full space-y-8"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 text-orange-500/80">
+            <MapIcon className="w-5 h-5" />
+            <span className="text-xs font-mono tracking-[0.3em] uppercase">Current Location</span>
+          </div>
+          
+          <h1 className="text-6xl font-black tracking-tighter uppercase italic leading-none">
+            {realm.name}
+          </h1>
+          
+          <div className="flex flex-wrap gap-2">
+            {realm.threats.map((threat, i) => (
+              <span key={i} className="px-3 py-1 bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-mono uppercase tracking-wider rounded-full">
+                {threat}
+              </span>
+            ))}
+            {realm.npcs.map((npc, i) => (
+              <span key={i} className="px-3 py-1 bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-mono uppercase tracking-wider rounded-full">
+                {npc}
+              </span>
+            ))}
+          </div>
+        </div>
 
-                  <div className="grid gap-4">
-                    {branchingPaths.map((path, i) => (
-                      <motion.button
-                        key={path.id}
-                        initial={{ x: -20, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        transition={{ delay: i * 0.1 }}
-                        onClick={() => handleSelectPath(path)}
-                        disabled={transitioning}
-                        className="group relative p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-[#00E0FF]/50 hover:bg-[#00E0FF]/5 text-left transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="flex items-center gap-3">
-                            {transitioning && (
-                              <Loader2 size={16} className="text-[#00E0FF] animate-spin" />
-                            )}
-                            <h4 className="text-lg font-bold text-white group-hover:text-[#00E0FF] transition-colors uppercase tracking-tight">{path.title}</h4>
-                          </div>
-                          <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${
-                            path.riskLevel === 'critical' ? 'border-red-500 text-red-500 bg-red-500/10' :
-                            path.riskLevel === 'high' ? 'border-orange-500 text-orange-500 bg-orange-500/10' :
-                            'border-[#00E0FF]/40 text-[#00E0FF]/60 bg-[#00E0FF]/5'
-                          } uppercase tracking-widest`}>
-                            Risk: {path.riskLevel}
-                          </span>
-                        </div>
-                        <p className="text-sm text-white/60 leading-relaxed mb-4">{path.consequence}</p>
-                        <div className="flex items-center gap-2 text-[10px] font-mono text-[#00E0FF] uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Waves size={12} />
-                          <span>Potential Reward: {path.potentialReward}</span>
-                        </div>
-                      </motion.button>
-                    ))}
-                  </div>
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+        {/* Description & Lore */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="md:col-span-2 space-y-6">
+            <div className="relative">
+              <div className="absolute -left-4 top-0 bottom-0 w-1 bg-gradient-to-b from-orange-500 to-transparent opacity-50" />
+              <p className="text-xl text-gray-300 leading-relaxed font-light italic">
+                "{realm.description}"
+              </p>
+            </div>
+            
+            <div className="p-6 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-sm">
+              <div className="flex items-center gap-2 mb-3 text-gray-400">
+                <Info className="w-4 h-4" />
+                <span className="text-[10px] font-mono uppercase tracking-widest">Island Lore</span>
+              </div>
+              <p className="text-sm text-gray-400 leading-relaxed">
+                {realm.lore}
+              </p>
+            </div>
+          </div>
 
-          {/* Realm Image */}
-          {gameState.currentRealm.imageUrl && (
-            <div className="w-full aspect-video rounded-3xl overflow-hidden border border-white/10 relative group">
-              <img 
-                src={gameState.currentRealm.imageUrl} 
-                alt={gameState.currentRealm.name}
-                className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
-                referrerPolicy="no-referrer"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-60" />
-              <div className="absolute bottom-4 left-6 flex items-center gap-3">
-                <div className="w-2 h-2 bg-[#00E0FF] rounded-full animate-pulse" />
-                <span className="text-[10px] font-mono text-white/60 tracking-widest uppercase">Island Connection Established</span>
+          <div className="space-y-4">
+            <div className="p-4 border border-white/10 rounded-2xl bg-white/5">
+              <h3 className="text-[10px] font-mono uppercase tracking-widest text-gray-500 mb-4">Entities Present</h3>
+              <div className="space-y-3">
+                {realm.entities.map((entity, i) => (
+                  <div key={i} className="flex items-center gap-3 group">
+                    <div className="w-1.5 h-1.5 rounded-full bg-orange-500 group-hover:scale-150 transition-transform" />
+                    <span className="text-sm text-gray-300">{entity}</span>
+                  </div>
+                ))}
               </div>
             </div>
-          )}
 
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-[#00E0FF]/60">
-              <Waves size={14} />
-              <span className="text-[10px] font-mono uppercase tracking-[0.2em]">{gameState.currentRealm.environment}</span>
+            <div className="p-4 border border-white/10 rounded-2xl bg-white/5">
+              <h3 className="text-[10px] font-mono uppercase tracking-widest text-gray-500 mb-4">Discovered Items</h3>
+              <div className="flex flex-wrap gap-2">
+                {realm.discoveredItems.length > 0 ? (
+                  realm.discoveredItems.map((item, i) => (
+                    <span key={i} className="text-xs text-gray-400 bg-white/5 px-2 py-1 rounded border border-white/5">
+                      {item}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-xs text-gray-600 italic">No items found yet...</span>
+                )}
+              </div>
             </div>
-            <h3 className="text-4xl md:text-6xl font-bold tracking-tighter leading-none">
-              {gameState.currentRealm.name}
-            </h3>
-            {gameState.currentRealm.name.toLowerCase().includes('salvo') && (
-              <motion.button
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                onClick={() => setShowMemorial(true)}
-                className="mt-4 flex items-center gap-3 px-6 py-3 rounded-2xl bg-[#00E0FF]/10 border border-[#00E0FF]/30 hover:bg-[#00E0FF]/20 transition-all group"
-              >
-                <div className="p-2 rounded-lg bg-[#00E0FF]/20">
-                  <Anchor size={18} className="text-[#00E0FF]" />
-                </div>
-                <div className="text-left">
-                  <div className="text-xs font-bold text-white uppercase tracking-widest">Visit Bull Hooper Memorial</div>
-                  <div className="text-[10px] font-mono text-[#00E0FF]/60 uppercase">A Salvo Landmark</div>
-                </div>
-                <ChevronRight size={16} className="text-[#00E0FF]/40 group-hover:translate-x-1 transition-transform" />
-              </motion.button>
+          </div>
+        </div>
+
+        {/* Branching Paths */}
+        <div className="space-y-6 pt-8 border-t border-white/10">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Compass className="w-5 h-5 text-orange-500" />
+              <h2 className="text-2xl font-bold tracking-tight uppercase">Choose Your Path</h2>
+            </div>
+            {isProcessing && (
+              <div className="flex items-center gap-2 text-orange-500">
+                <motion.div 
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                >
+                  <Sparkles className="w-4 h-4" />
+                </motion.div>
+                <span className="text-[10px] font-mono uppercase tracking-widest animate-pulse">AI is evolving the narrative...</span>
+              </div>
             )}
           </div>
 
-          <div className="relative group/desc">
-            <div className="absolute -left-8 top-0 opacity-0 group-hover/desc:opacity-100 transition-opacity duration-500">
-              <Sparkles size={20} className="text-[#00E0FF] animate-pulse" />
-            </div>
-            <p className="text-lg md:text-xl text-white/80 leading-relaxed font-light italic pr-12 group-hover/desc:text-white transition-colors duration-500">
-              "{gameState.currentRealm.description}"
-            </p>
-            <div className="absolute -right-4 bottom-0 opacity-0 group-hover/desc:opacity-100 transition-opacity duration-500 delay-100">
-              <Activity size={16} className="text-[#00E0FF]/40" />
-            </div>
-            <button
-              onClick={() => handleListen(gameState.currentRealm!.description)}
-              className={`absolute right-0 top-1/2 -translate-y-1/2 p-3 rounded-full transition-all ${
-                playingAudio === gameState.currentRealm.description
-                  ? 'bg-[#00E0FF] text-black animate-pulse'
-                  : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-[#00E0FF]'
-              }`}
-              title="Listen to Island Soul"
-            >
-              {playingAudio === gameState.currentRealm.description ? <VolumeX size={20} /> : <Volume2 size={20} />}
-            </button>
-          </div>
-
-          <div className="pt-8 space-y-4">
-            {gameState.currentRealm.npc && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="p-6 rounded-3xl bg-[#00E0FF]/5 border border-[#00E0FF]/20 space-y-6"
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {realm.paths.map((path) => (
+              <motion.button
+                key={path.id}
+                whileHover={{ scale: 1.02, x: 4 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => onPathChoice(path)}
+                disabled={isProcessing}
+                className={`group relative p-6 rounded-2xl border text-left transition-all duration-300 ${
+                  isProcessing ? 'opacity-50 cursor-not-allowed' : 'hover:border-orange-500/50 hover:bg-orange-500/5'
+                } ${getRiskColor(path.risk)}`}
               >
-                <div className="flex items-start gap-4">
-                  <div className="p-4 rounded-2xl bg-black/40 border border-[#00E0FF]/20 text-[#00E0FF]">
-                    <Users size={24} />
+                <div className="flex justify-between items-start mb-4">
+                  <div className={`p-2 rounded-lg border ${getRiskColor(path.risk)}`}>
+                    {getRiskIcon(path.risk)}
                   </div>
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-xl font-bold text-white uppercase tracking-tighter">{gameState.currentRealm.npc.name}</h4>
-                      <span className="text-[10px] font-mono text-[#00E0FF] uppercase tracking-widest px-2 py-0.5 rounded border border-[#00E0FF]/30 bg-[#00E0FF]/5">
-                        {gameState.currentRealm.npc.role}
-                      </span>
-                    </div>
-                    <p className="text-sm text-white/60 leading-relaxed italic">
-                      "{gameState.currentRealm.npc.description}"
-                    </p>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-mono uppercase tracking-widest opacity-60">Risk:</span>
+                    <span className="text-[10px] font-mono uppercase tracking-widest font-bold">{path.risk}</span>
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  <span className="text-[10px] font-mono uppercase text-white/20 tracking-widest block">Dialogue Stream</span>
-                  <div className="p-4 rounded-xl bg-black/40 border border-white/5 text-sm text-white/80 italic leading-relaxed relative group/dialogue">
-                    "{gameState.currentRealm.npc.dialogue[0]}"
-                    <button
-                      onClick={() => handleListen(gameState.currentRealm!.npc!.dialogue[0])}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/5 text-white/40 hover:bg-[#00E0FF]/10 hover:text-[#00E0FF] transition-all opacity-0 group-hover/dialogue:opacity-100"
-                    >
-                      <Volume2 size={16} />
-                    </button>
-                  </div>
-                </div>
+                <h3 className="text-xl font-bold mb-2 group-hover:text-white transition-colors">
+                  {path.label}
+                </h3>
+                <p className="text-sm opacity-70 leading-relaxed mb-4">
+                  {path.description}
+                </p>
 
-                {gameState.currentRealm.npc.trades && gameState.currentRealm.npc.trades.length > 0 && (
-                  <div className="space-y-3">
-                    <span className="text-[10px] font-mono uppercase text-white/20 tracking-widest block">Available Exchanges</span>
-                    <div className="grid grid-cols-1 gap-2">
-                      {gameState.currentRealm.npc.trades.map((trade, i) => (
-                        <button
-                          key={i}
-                          onClick={() => {
-                            const hasItem = gameState.inventory.some(item => item.id === trade.input || item.name === trade.input);
-                            if (hasItem) {
-                              setGameState(prev => ({
-                                ...prev,
-                                inventory: [...(prev.inventory || []).filter(item => item.id !== trade.input && item.name !== trade.input), trade.output],
-                                history: [`Trade: Exchanged ${trade.input} for ${trade.output.name} with ${gameState.currentRealm!.npc!.name}.`, ...prev.history]
-                              }));
-                            }
-                          }}
-                          className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10 hover:border-[#00E0FF]/40 hover:bg-[#00E0FF]/5 transition-all group"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="text-[10px] font-mono text-white/40 uppercase">Give: <span className="text-white">{trade.input}</span></div>
-                            <ArrowRight size={12} className="text-white/20 group-hover:text-[#00E0FF] transition-colors" />
-                            <div className="text-[10px] font-mono text-white/40 uppercase">Receive: <span className="text-[#00E0FF]">{trade.output.name}</span></div>
-                          </div>
-                          <ChevronRight size={14} className="text-white/20 group-hover:text-[#00E0FF] transition-transform" />
-                        </button>
-                      ))}
-                    </div>
+                {path.requirement && (
+                  <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest opacity-50 mb-4">
+                    <Zap className="w-3 h-3" />
+                    <span>Req: {path.requirement}</span>
                   </div>
                 )}
-              </motion.div>
-            )}
 
-            <span className="text-[10px] font-mono uppercase text-[#00E0FF]/50 tracking-widest block">Available Pathways</span>
-            <div className="grid grid-cols-1 gap-3">
-              {gameState.currentRealm.options.map((option, i) => (
-                <button
-                  key={i}
-                  onClick={() => handleAction(option)}
-                  disabled={transitioning}
-                  className="group relative flex items-center justify-between p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-[#00E0FF]/10 hover:border-[#00E0FF]/40 transition-all duration-300 text-left disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="p-2 rounded-lg bg-black/40 group-hover:bg-[#00E0FF]/20 transition-colors">
-                      {transitioning ? (
-                        <Loader2 size={18} className="text-[#00E0FF] animate-spin" />
-                      ) : (
-                        <>
-                          {option.targetType === 'explore' && <Compass size={18} className="text-[#00E0FF]" />}
-                          {option.targetType === 'interact' && <Waves size={18} className="text-[#00E0FF]" />}
-                          {option.targetType === 'analyze' && <Anchor size={18} className="text-[#00E0FF]" />}
-                        </>
-                      )}
-                    </div>
-                    <div>
-                      <div className="text-sm font-bold group-hover:text-[#00E0FF] transition-colors">{option.label}</div>
-                      <div className="text-[10px] font-mono uppercase text-white/40">{option.targetType} pathway</div>
-                    </div>
-                  </div>
-                  <ChevronRight size={18} className="text-white/20 group-hover:text-[#00E0FF] group-hover:translate-x-1 transition-all" />
-                </button>
-              ))}
+                <div className="flex items-center justify-between pt-4 border-t border-current/10">
+                  <span className="text-[10px] font-mono uppercase tracking-widest opacity-60">Proceed Path</span>
+                  <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
+                </div>
+
+                {/* Hover Glow Effect */}
+                <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-current to-transparent opacity-0 group-hover:opacity-5 transition-opacity pointer-events-none" />
+              </motion.button>
+            ))}
+          </div>
+        </div>
+
+        {/* Camp Activities & Idol Search */}
+        <div className="space-y-6 pt-8 border-t border-white/10">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Flame className="w-5 h-5 text-orange-500" />
+              <h2 className="text-2xl font-bold tracking-tight uppercase">Beach Camp Activities</h2>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/30">
+              <Users className="w-3 h-3 text-orange-400" />
+              <span className="text-[10px] font-mono uppercase tracking-widest text-orange-400 italic">Learning AI Together</span>
             </div>
           </div>
-        </motion.div>
-      </AnimatePresence>
-    </section>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <motion.button
+              whileHover={{ scale: 1.02, y: -2 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={onSearchForIdol}
+              disabled={isProcessing}
+              className={`p-6 rounded-2xl border transition-all flex flex-col items-center justify-center gap-3 text-center ${
+                canSearch 
+                  ? 'border-blue-500/30 bg-blue-500/5 hover:border-blue-500/50 hover:bg-blue-500/10' 
+                  : 'border-white/5 bg-white/5 opacity-50 cursor-not-allowed'
+              }`}
+            >
+              <div className={`p-3 rounded-xl ${canSearch ? 'bg-blue-500/20 text-blue-400' : 'bg-white/10 text-gray-500'}`}>
+                <Anchor className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-bold text-white uppercase italic tracking-tight">Search for Idol</h3>
+                <p className="text-[10px] text-gray-500 uppercase tracking-widest mt-1">Scan the Sands</p>
+              </div>
+            </motion.button>
+
+            <div className="p-6 rounded-2xl border border-white/10 bg-white/5 flex flex-col items-center justify-center gap-3 text-center">
+              <div className="p-3 rounded-xl bg-purple-500/20 text-purple-400">
+                <Brain className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-bold text-white uppercase italic tracking-tight">AI Strategy Session</h3>
+                <p className="text-[10px] text-gray-500 uppercase tracking-widest mt-1">Learn SMB AI Hacks</p>
+              </div>
+            </div>
+
+            <div className="p-6 rounded-2xl border border-white/10 bg-white/5 flex flex-col items-center justify-center gap-3 text-center">
+              <div className="p-3 rounded-xl bg-green-500/20 text-green-400">
+                <Briefcase className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-bold text-white uppercase italic tracking-tight">Business Workshop</h3>
+                <p className="text-[10px] text-gray-500 uppercase tracking-widest mt-1">Apply AI to Real World</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Survivor Challenges Section */}
+        <div className="space-y-6 pt-8 border-t border-white/10">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Trophy className="w-5 h-5 text-yellow-500" />
+              <h2 className="text-2xl font-bold tracking-tight uppercase">Survivor Challenges</h2>
+            </div>
+            <div className="px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/30 flex items-center gap-2">
+              <Brain className="w-3 h-3 text-blue-400" />
+              <span className="text-[10px] font-mono uppercase tracking-widest text-blue-400">AI Pieces Available</span>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <ChallengeButton 
+              id="tower-climb"
+              icon={Anchor}
+              title="The Water Tower"
+              description="Climb the tower in the water and get to the top first."
+              onChallenge={onChallenge}
+              isProcessing={isProcessing}
+            />
+            <ChallengeButton 
+              id="canoe-race"
+              icon={Waves}
+              title="Sound Crossing"
+              description="Get in a canoe and row hard to the other side."
+              onChallenge={onChallenge}
+              isProcessing={isProcessing}
+            />
+          </div>
+        </div>
+
+        {/* Environmental Effects */}
+        <div className="grid grid-cols-3 gap-4 pt-8">
+          <div className="flex items-center gap-3 p-4 rounded-2xl bg-white/5 border border-white/10">
+            <Wind className="w-5 h-5 text-blue-400" />
+            <div>
+              <div className="text-[10px] font-mono uppercase tracking-widest text-gray-500">Wind Speed</div>
+              <div className="text-sm font-bold">14 knots NE</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-4 rounded-2xl bg-white/5 border border-white/10">
+            <Waves className="w-5 h-5 text-cyan-400" />
+            <div>
+              <div className="text-[10px] font-mono uppercase tracking-widest text-gray-500">Tide Status</div>
+              <div className="text-sm font-bold">Incoming</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-4 rounded-2xl bg-white/5 border border-white/10">
+            <Sparkles className="w-5 h-5 text-orange-400" />
+            <div>
+              <div className="text-[10px] font-mono uppercase tracking-widest text-gray-500">AI Resonance</div>
+              <div className="text-sm font-bold">Stable</div>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Background Ambience */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden opacity-20">
+        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_50%,rgba(249,115,22,0.1),transparent_70%)]" />
+        <motion.div 
+          animate={{ 
+            scale: [1, 1.1, 1],
+            opacity: [0.1, 0.2, 0.1]
+          }}
+          transition={{ duration: 10, repeat: Infinity }}
+          className="absolute -top-1/2 -left-1/2 w-full h-full bg-orange-500/10 blur-[120px] rounded-full" 
+        />
+      </div>
+    </div>
   );
 };
 
