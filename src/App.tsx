@@ -201,6 +201,7 @@ const App: React.FC = () => {
   const [showMembersArea, setShowMembersArea] = useState(false);
   const [showMannyRogers, setShowMannyRogers] = useState(false);
   const [showSalvoMemorial, setShowSalvoMemorial] = useState(false);
+  const [showRightPanel, setShowRightPanel] = useState(true);
   const [showSubscriptionSuccess, setShowSubscriptionSuccess] = useState<string | null>(null);
   const [businessChallengeFeedback, setBusinessChallengeFeedback] = useState<string | null>(null);
   const [showTribalCouncil, setShowTribalCouncil] = useState(false);
@@ -944,9 +945,11 @@ const App: React.FC = () => {
           onShowMembersArea={() => setShowMembersArea(true)}
           onShowMannyRogers={() => setShowMannyRogers(true)}
           onShowSalvoMemorial={() => setShowSalvoMemorial(true)}
+          onToggleRightPanel={() => setShowRightPanel(!showRightPanel)}
+          isRightPanelVisible={showRightPanel}
         />
         
-        <main className="flex-1 flex flex-col relative">
+        <main className="flex-1 flex flex-col relative min-w-0">
           <Header 
             gameState={gameState}
             user={user}
@@ -992,15 +995,27 @@ const App: React.FC = () => {
           </div>
         </main>
 
-        <RightPanel 
-          gameState={gameState}
-          aiStage={gameState.aiStage}
-          evolution={gameState.evolution}
-          traits={gameState.traits}
-          memory={gameState.memory}
-          activeEvents={gameState.activeEvents}
-          onShowDiagnostics={() => setShowAILab(true)}
-        />
+        <AnimatePresence>
+          {showRightPanel && (
+            <motion.div
+              initial={{ x: 400 }}
+              animate={{ x: 0 }}
+              exit={{ x: 400 }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="hidden lg:block h-full"
+            >
+              <RightPanel 
+                gameState={gameState}
+                aiStage={gameState.aiStage}
+                evolution={gameState.evolution}
+                traits={gameState.traits}
+                memory={gameState.memory}
+                activeEvents={gameState.activeEvents}
+                onShowDiagnostics={() => setShowAILab(true)}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Overlays */}
         <AnimatePresence>

@@ -21,7 +21,8 @@ import {
   Sparkles,
   Heart,
   Brain,
-  Wind
+  Wind,
+  Wrench
 } from 'lucide-react';
 import { GameState, SurvivorState, Contestant } from '../types';
 
@@ -40,6 +41,8 @@ interface SidebarProps {
   onShowMembersArea: () => void;
   onShowMannyRogers: () => void;
   onShowSalvoMemorial: () => void;
+  onToggleRightPanel: () => void;
+  isRightPanelVisible: boolean;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
@@ -56,7 +59,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   onShowCampLife,
   onShowMembersArea,
   onShowMannyRogers,
-  onShowSalvoMemorial
+  onShowSalvoMemorial,
+  onToggleRightPanel,
+  isRightPanelVisible
 }) => {
   const [isOpen, setIsOpen] = React.useState(true);
 
@@ -82,6 +87,17 @@ const Sidebar: React.FC<SidebarProps> = ({
         className="absolute -right-3 top-20 w-6 h-12 bg-orange-500 rounded-full flex items-center justify-center border border-white/20 hover:bg-orange-400 transition-colors z-50"
       >
         {isOpen ? <X className="w-4 h-4 text-black" /> : <Menu className="w-4 h-4 text-black" />}
+      </button>
+
+      {/* Right Panel Toggle Button */}
+      <button 
+        onClick={onToggleRightPanel}
+        className={`absolute -right-3 top-40 w-6 h-12 rounded-full flex items-center justify-center border border-white/20 transition-all z-50 ${
+          isRightPanelVisible ? 'bg-blue-500 hover:bg-blue-400' : 'bg-gray-700 hover:bg-gray-600'
+        }`}
+        title={isRightPanelVisible ? "Hide Right Panel" : "Show Right Panel"}
+      >
+        <LayoutDashboard className={`w-4 h-4 ${isRightPanelVisible ? 'text-white' : 'text-gray-400'}`} />
       </button>
 
       {/* Survivor Stats */}
@@ -275,6 +291,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <HubButton icon={Anchor} label="Lighthouse" onClick={onShowLighthouse} color="text-yellow-400" />
                 <HubButton icon={Compass} label="Faction Selection" onClick={onShowFactions} color="text-emerald-400" />
                 <HubButton icon={LayoutDashboard} label="Business Dashboard" onClick={onShowBusiness} color="text-purple-400" />
+                <HubButton icon={Wrench} label="Survival Toolbox" onClick={onShowBusiness} color="text-orange-400" />
                 <HubButton icon={ShoppingBag} label="Sales Center" onClick={onShowSales} color="text-pink-400" />
                 <HubButton icon={Sparkles} label="Members Area" onClick={onShowMembersArea} color="text-yellow-400" />
                 <HubButton icon={Brain} label="Manny Rogers (AI Strategist)" onClick={onShowMannyRogers} color="text-blue-400" />

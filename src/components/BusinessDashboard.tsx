@@ -288,7 +288,7 @@ const BusinessDashboard: React.FC<BusinessDashboardProps> = ({
           </div>
 
           {/* Survival Toolbox - Tribe Leader Only Area */}
-          <div className="mt-12 p-10 bg-gradient-to-br from-orange-900/20 to-black/40 border border-orange-500/20 rounded-[2.5rem] relative overflow-hidden">
+          <div id="toolbox" className="mt-12 p-10 bg-gradient-to-br from-orange-900/20 to-black/40 border border-orange-500/20 rounded-[2.5rem] relative overflow-hidden">
             <div className="absolute top-0 right-0 p-10 opacity-5">
               <Wrench className="w-48 h-48 text-orange-500" />
             </div>
@@ -361,6 +361,49 @@ const BusinessDashboard: React.FC<BusinessDashboardProps> = ({
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+
+          {/* Revenue Streams - Marketplace */}
+          <div className="mt-12 p-10 bg-white/5 border border-white/10 rounded-[2.5rem]">
+            <div className="flex items-center justify-between mb-10">
+              <div className="flex items-center gap-6">
+                <div className="w-16 h-16 rounded-2xl bg-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-600/20">
+                  <TrendingUp className="text-white w-8 h-8" />
+                </div>
+                <div>
+                  <h3 className="text-3xl font-bold text-white uppercase italic tracking-tighter">Active Revenue Streams</h3>
+                  <p className="text-emerald-400 font-mono text-[10px] uppercase tracking-[0.4em] mt-1">Marketplace • Automated Sales</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[
+                { name: 'Neural Outreach Bot', sales: '124', revenue: '6,200 SD', growth: '+15%' },
+                { name: 'Market Oracle', sales: '45', revenue: '5,400 SD', growth: '+8%' },
+                { name: 'Custom Workflows', sales: '12', revenue: '18,000 SD', growth: '+22%' }
+              ].map((stream, i) => (
+                <div key={i} className="p-6 bg-black/40 border border-emerald-500/10 rounded-3xl group hover:border-emerald-500/40 transition-all">
+                  <div className="flex justify-between items-start mb-4">
+                    <h4 className="text-lg font-bold text-white uppercase italic">{stream.name}</h4>
+                    <span className="text-emerald-400 font-mono text-[10px] font-bold">{stream.growth}</span>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="flex justify-between text-[10px] font-mono uppercase tracking-widest text-gray-500">
+                      <span>Total Sales</span>
+                      <span className="text-white">{stream.sales}</span>
+                    </div>
+                    <div className="flex justify-between text-[10px] font-mono uppercase tracking-widest text-gray-500">
+                      <span>Revenue</span>
+                      <span className="text-emerald-400">{stream.revenue}</span>
+                    </div>
+                    <button className="w-full py-3 bg-emerald-600/20 border border-emerald-500/30 rounded-xl text-[10px] text-emerald-400 font-mono uppercase tracking-widest hover:bg-emerald-600/30 transition-all">
+                      Optimize Sales
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
