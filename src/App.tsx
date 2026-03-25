@@ -68,6 +68,10 @@ import BusinessDashboard from './components/BusinessDashboard';
 import ErrorBoundary from './components/ErrorBoundary';
 import AILab from './components/AILab';
 import CampLife from './components/CampLife';
+import MembersArea from './components/MembersArea';
+import MannyRogers from './components/MannyRogers';
+import SalvoMemorial from './components/SalvoMemorial';
+import BehindTheScenesHUD from './components/BehindTheScenesHUD';
 import BusinessChallengeOverlay from './components/BusinessChallengeOverlay';
 
 // Types & Constants
@@ -123,6 +127,7 @@ const App: React.FC = () => {
   // --- State ---
   const [user, setUser] = useState<User | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
   const [gameState, setGameState] = useState<GameState>({
     day: 1,
     vitality: 100,
@@ -160,11 +165,14 @@ const App: React.FC = () => {
       campMorale: 70,
       campInfrastructure: 30,
       tribeLevel: 1,
-      sandDollars: 50
+      sandDollars: 50,
+      fullness: 3,
+      hitPoints: 100,
+      foodSupply: 10
     },
     history: ['Woke up on Hatteras Island.'],
     tasks: [],
-    isMember: false
+    isParadiseMember: false
   });
 
   // UI Controls
@@ -179,6 +187,9 @@ const App: React.FC = () => {
   const [showBusiness, setShowBusiness] = useState(false);
   const [showAILab, setShowAILab] = useState(false);
   const [showCampLife, setShowCampLife] = useState(false);
+  const [showMembersArea, setShowMembersArea] = useState(false);
+  const [showMannyRogers, setShowMannyRogers] = useState(false);
+  const [showSalvoMemorial, setShowSalvoMemorial] = useState(false);
   const [showSubscriptionSuccess, setShowSubscriptionSuccess] = useState<string | null>(null);
   const [businessChallengeFeedback, setBusinessChallengeFeedback] = useState<string | null>(null);
   const [showTribalCouncil, setShowTribalCouncil] = useState(false);
@@ -186,18 +197,73 @@ const App: React.FC = () => {
   const [combatLogFilter, setCombatLogFilter] = useState<'all' | 'player' | 'enemy' | 'system'>('all');
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // --- Auth ---
+  // --- Auth & Persistence ---
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    // Check URL for Stripe success/cancel
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get('status');
+    const plan = params.get('plan');
+    
+    if (status === 'success' && plan) {
+      setShowSubscriptionSuccess(plan);
+      setGameState(prev => ({ ...prev, isParadiseMember: true }));
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (status === 'cancel') {
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
       setIsAuthReady(true);
-      // Mock membership check
+      
       if (user) {
-        setGameState(prev => ({ ...prev, isMember: true }));
+        try {
+          const docRef = doc(db, 'users', user.uid);
+          const docSnap = await getDoc(docRef);
+          
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            if (data.gameState) {
+              setGameState(data.gameState);
+            }
+          } else {
+            // Mock membership check for new users
+            setGameState(prev => ({ ...prev, isParadiseMember: true }));
+          }
+        } catch (error) {
+          console.error("Error loading user data:", error);
+        }
+      } else {
+        // Reset state on logout
+        setGameState(prev => ({ ...prev, isParadiseMember: false }));
       }
+      setIsLoaded(true);
     });
     return unsubscribe;
   }, []);
+
+  useEffect(() => {
+    if (user && isLoaded) {
+      const saveState = async () => {
+        try {
+          const docRef = doc(db, 'users', user.uid);
+          await setDoc(docRef, {
+            uid: user.uid,
+            gameState: gameState,
+            updatedAt: serverTimestamp()
+          }, { merge: true });
+        } catch (error) {
+          console.error("Error saving user data:", error);
+        }
+      };
+      
+      // Debounce save to avoid too many writes
+      const timeoutId = setTimeout(saveState, 2000);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [gameState, user, isLoaded]);
 
   const handleLogin = async () => {
     const provider = new GoogleAuthProvider();
@@ -242,19 +308,33 @@ const App: React.FC = () => {
     try {
       const update = await generateRealmUpdate(gameState.currentRealm, path.label, gameState.aiStage);
       
-      setGameState(prev => ({
-        ...prev,
-        day: prev.day + 1,
-        currentRealm: update.newRealm,
-        vitality: Math.max(0, prev.vitality - 5),
-        evolution: Math.min(1, prev.evolution + 0.01),
-        history: [...(prev.history || []), `Traveled to ${update.newRealm.name}`],
-        survivor: {
-          ...prev.survivor,
-          day: prev.survivor.day + 1,
-          aiLearningProgress: Math.min(100, prev.survivor.aiLearningProgress + 2)
+      setGameState(prev => {
+        let newFullness = prev.survivor.fullness - 10;
+        let newHitPoints = prev.survivor.hitPoints;
+
+        if (newFullness <= 0) {
+          newFullness = 0;
+          // Paradise Members get 50% reduced HP decay when starving
+          const decayAmount = prev.isParadiseMember ? 5 : 10;
+          newHitPoints = Math.max(0, newHitPoints - decayAmount);
         }
-      }));
+
+        return {
+          ...prev,
+          day: prev.day + 1,
+          currentRealm: update.newRealm,
+          vitality: Math.max(0, prev.vitality - 5),
+          evolution: Math.min(1, prev.evolution + 0.01),
+          history: [...(prev.history || []), `Traveled to ${update.newRealm.name}`],
+          survivor: {
+            ...prev.survivor,
+            day: prev.survivor.day + 1,
+            aiLearningProgress: Math.min(100, prev.survivor.aiLearningProgress + 2),
+            fullness: newFullness,
+            hitPoints: newHitPoints
+          }
+        };
+      });
 
       // Random AI piece discovery
       if (Math.random() > 0.7) {
@@ -372,6 +452,39 @@ const App: React.FC = () => {
     const contestant = gameState.survivor.contestants.find(c => c.id === contestantId);
     if (!contestant) return;
 
+    if (action === 'give_food') {
+      if (gameState.survivor.foodSupply > 0) {
+        setGameState(prev => ({
+          ...prev,
+          survivor: {
+            ...prev.survivor,
+            foodSupply: prev.survivor.foodSupply - 1,
+            campMorale: Math.min(100, prev.survivor.campMorale + 5)
+          },
+          history: [...(prev.history || []), `Gave food to ${contestant.name}. Trust increased.`]
+        }));
+      } else {
+        setGameState(prev => ({
+          ...prev,
+          history: [...(prev.history || []), `Not enough food to give to ${contestant.name}.`]
+        }));
+      }
+      return;
+    }
+
+    if (action === 'take_food') {
+      setGameState(prev => ({
+        ...prev,
+        survivor: {
+          ...prev.survivor,
+          foodSupply: prev.survivor.foodSupply + 1,
+          campMorale: Math.max(0, prev.survivor.campMorale - 10)
+        },
+        history: [...(prev.history || []), `Stole food from ${contestant.name}. Morale decreased.`]
+      }));
+      return;
+    }
+
     try {
       const dialogue = await generateSurvivorDialogue(contestant, action);
       setGameState(prev => ({
@@ -388,6 +501,44 @@ const App: React.FC = () => {
   };
 
   const handleCampManage = (action: string) => {
+    if (action === 'eat') {
+      if (gameState.survivor.foodSupply > 0 && gameState.survivor.fullness < 3) {
+        setGameState(prev => ({
+          ...prev,
+          survivor: {
+            ...prev.survivor,
+            foodSupply: prev.survivor.foodSupply - 1,
+            fullness: Math.min(3, prev.survivor.fullness + 1)
+          },
+          history: [...(prev.history || []), `Ate food. Fullness increased.`]
+        }));
+      } else if (gameState.survivor.fullness >= 3) {
+        setGameState(prev => ({
+          ...prev,
+          history: [...(prev.history || []), `You are already full.`]
+        }));
+      } else {
+        setGameState(prev => ({
+          ...prev,
+          history: [...(prev.history || []), `No food left to eat.`]
+        }));
+      }
+      return;
+    }
+
+    if (action === 'forage') {
+      const foundFood = Math.random() > 0.4 ? Math.floor(Math.random() * 3) + 1 : 0;
+      setGameState(prev => ({
+        ...prev,
+        survivor: {
+          ...prev.survivor,
+          foodSupply: prev.survivor.foodSupply + foundFood
+        },
+        history: [...(prev.history || []), foundFood > 0 ? `Foraged and found ${foundFood} food.` : `Foraged but found nothing.`]
+      }));
+      return;
+    }
+
     setGameState(prev => ({
       ...prev,
       survivor: {
@@ -397,6 +548,32 @@ const App: React.FC = () => {
       },
       history: [...(prev.history || []), `Managed camp ${action}. Infrastructure improved.`]
     }));
+  };
+
+  const handleEndDay = () => {
+    setGameState(prev => {
+      let newFullness = prev.survivor.fullness - 1;
+      let newHp = prev.survivor.hitPoints;
+      
+      if (newFullness < 0) {
+        newFullness = 0;
+        newHp = Math.max(0, newHp - 20);
+      } else if (newFullness > 0 && newHp < 100) {
+        newHp = Math.min(100, newHp + 10);
+      }
+
+      return {
+        ...prev,
+        day: prev.day + 1,
+        survivor: {
+          ...prev.survivor,
+          day: prev.survivor.day + 1,
+          fullness: newFullness,
+          hitPoints: newHp
+        },
+        history: [...(prev.history || []), `Day ${prev.day} ended. Fullness decreased.`]
+      };
+    });
   };
 
   const handleCombatAction = async (action: 'attack' | 'defend' | 'special') => {
@@ -486,12 +663,19 @@ const App: React.FC = () => {
 
   const handlePurchaseItem = (itemId: string) => {
     const item = SALES_ITEMS.find(i => i.id === itemId);
-    if (item && gameState.survivor.sandDollars >= item.cost) {
+    if (!item) return;
+
+    let cost = item.cost;
+    if (gameState.isParadiseMember && ['workflow', 'package', 'implementation', 'monitoring'].includes(item.category || '')) {
+      cost = Math.floor(item.cost * 0.75);
+    }
+
+    if (gameState.survivor.sandDollars >= cost) {
       setGameState(prev => ({
         ...prev,
         survivor: {
           ...prev.survivor,
-          sandDollars: prev.survivor.sandDollars - item.cost
+          sandDollars: prev.survivor.sandDollars - cost
         },
         inventory: [...prev.inventory, item.name]
       }));
@@ -537,15 +721,72 @@ const App: React.FC = () => {
     }));
   };
 
-  const handleUpgradePlan = (plan: string) => {
-    setShowPricing(false);
-    setShowSubscriptionSuccess(plan);
-    setGameState(prev => ({ ...prev, isMember: true }));
+  const handleUpgradePlan = async (planId: string) => {
+    if (!user) {
+      handleLogin();
+      return;
+    }
+
+    const plan = TIERS.find(t => t.id === planId);
+    if (!plan) return;
+
+    // Free plan
+    if (plan.price === 0) {
+      setShowPricing(false);
+      setShowSubscriptionSuccess(plan.name);
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: plan.name,
+          price: plan.price,
+          description: plan.description,
+          email: user.email
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        console.error("Failed to create checkout session:", data.error);
+        // Fallback for development if Stripe isn't configured
+        setShowPricing(false);
+        setShowSubscriptionSuccess(plan.name);
+        setGameState(prev => ({ ...prev, isParadiseMember: true }));
+      }
+    } catch (error) {
+      console.error("Error creating checkout session:", error);
+      // Fallback for development
+      setShowPricing(false);
+      setShowSubscriptionSuccess(plan.name);
+      setGameState(prev => ({ ...prev, isParadiseMember: true }));
+    }
   };
 
   const handleSearchForIdol = () => {
     if (isProcessing) return;
     setIsProcessing(true);
+
+    const hasMachete = gameState.inventory.includes('Branded Machete');
+    const isBuxtonWoods = gameState.currentRealm.name === 'Buxton Woods';
+    const searchSuccessChance = (isBuxtonWoods && hasMachete) ? 0.95 : 0.5;
+
+    if (Math.random() > searchSuccessChance) {
+      setGameState(prev => ({
+        ...prev,
+        history: [...(prev.history || []), `Searched for an idol at ${gameState.currentRealm.name} but found nothing. Keep looking!`]
+      }));
+      setIsProcessing(false);
+      return;
+    }
 
     const idolAtLocation = gameState.survivor.idols.find(
       i => i.location === gameState.currentRealm.name && !i.isFound
@@ -624,6 +865,9 @@ const App: React.FC = () => {
           onShowSales={() => setShowSales(true)}
           onShowAILab={() => setShowAILab(true)}
           onShowCampLife={() => setShowCampLife(true)}
+          onShowMembersArea={() => setShowMembersArea(true)}
+          onShowMannyRogers={() => setShowMannyRogers(true)}
+          onShowSalvoMemorial={() => setShowSalvoMemorial(true)}
         />
         
         <main className="flex-1 flex flex-col relative">
@@ -638,7 +882,7 @@ const App: React.FC = () => {
           />
           
           <div className="flex-1 relative overflow-hidden">
-            {!gameState.isMember ? (
+            {!gameState.isParadiseMember ? (
               <div className="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-md z-50">
                 <div className="text-center space-y-8 max-w-2xl px-8">
                   <div className="p-6 bg-orange-500/20 rounded-full border border-orange-500/30 inline-block">
@@ -748,7 +992,8 @@ const App: React.FC = () => {
 
           {showSales && (
             <SalesCenter 
-              sandDollars={gameState.sandDollars}
+              sandDollars={gameState.survivor.sandDollars}
+              isParadiseMember={gameState.isParadiseMember}
               onPurchase={handlePurchaseItem}
               onClose={() => setShowSales(false)}
             />
@@ -773,7 +1018,29 @@ const App: React.FC = () => {
               gameState={gameState}
               onInteract={handleCampInteract}
               onManageCamp={handleCampManage}
+              onEndDay={handleEndDay}
               onClose={() => setShowCampLife(false)}
+            />
+          )}
+
+          {showMembersArea && (
+            <MembersArea 
+              gameState={gameState}
+              onPurchase={handlePurchaseItem}
+              onClose={() => setShowMembersArea(false)}
+            />
+          )}
+
+          {showMannyRogers && (
+            <MannyRogers 
+              gameState={gameState}
+              onClose={() => setShowMannyRogers(false)}
+            />
+          )}
+
+          {showSalvoMemorial && (
+            <SalvoMemorial 
+              onClose={() => setShowSalvoMemorial(false)}
             />
           )}
 
@@ -794,6 +1061,8 @@ const App: React.FC = () => {
             />
           )}
         </AnimatePresence>
+
+        <BehindTheScenesHUD gameState={gameState} />
       </div>
     </ErrorBoundary>
   );

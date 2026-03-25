@@ -23,10 +23,11 @@ interface CampLifeProps {
   gameState: GameState;
   onInteract: (contestantId: string, action: string) => void;
   onManageCamp: (action: string) => void;
+  onEndDay: () => void;
   onClose: () => void;
 }
 
-const CampLife: React.FC<CampLifeProps> = ({ gameState, onInteract, onManageCamp, onClose }) => {
+const CampLife: React.FC<CampLifeProps> = ({ gameState, onInteract, onManageCamp, onEndDay, onClose }) => {
   const survivor = gameState.survivor;
   const activeContestants = survivor.contestants.filter(c => c.status === 'active' && !c.isPlayer);
   const [selectedContestant, setSelectedContestant] = useState<Contestant | null>(null);
@@ -98,6 +99,27 @@ const CampLife: React.FC<CampLifeProps> = ({ gameState, onInteract, onManageCamp
                   </div>
                 ))}
               </div>
+
+              <div className="pt-6 border-t border-white/10 space-y-4">
+                <div className="flex items-center gap-3 text-orange-400">
+                  <Flame className="w-5 h-5" />
+                  <h3 className="text-xl font-bold uppercase tracking-tight">Your Survival</h3>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="p-3 bg-black/40 rounded-xl border border-white/5 text-center">
+                    <div className="text-[8px] font-mono text-gray-500 uppercase tracking-widest mb-1">HP</div>
+                    <div className="text-sm font-bold text-red-400">{survivor.hitPoints}/100</div>
+                  </div>
+                  <div className="p-3 bg-black/40 rounded-xl border border-white/5 text-center">
+                    <div className="text-[8px] font-mono text-gray-500 uppercase tracking-widest mb-1">Fullness</div>
+                    <div className="text-sm font-bold text-orange-400">{survivor.fullness}/3</div>
+                  </div>
+                  <div className="p-3 bg-black/40 rounded-xl border border-white/5 text-center">
+                    <div className="text-[8px] font-mono text-gray-500 uppercase tracking-widest mb-1">Food</div>
+                    <div className="text-sm font-bold text-emerald-400">{survivor.foodSupply}</div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="space-y-6">
@@ -108,21 +130,21 @@ const CampLife: React.FC<CampLifeProps> = ({ gameState, onInteract, onManageCamp
               <div className="grid grid-cols-1 gap-3">
                 <ActionButton 
                   icon={Coffee} 
-                  label="Social Bonding" 
-                  description="Use AI to mediate tribe conflicts."
-                  onClick={() => onManageCamp('social')}
+                  label="Eat Food" 
+                  description="Consume 1 Food to increase Fullness."
+                  onClick={() => onManageCamp('eat')}
                 />
                 <ActionButton 
                   icon={Zap} 
-                  label="Resource Optimization" 
-                  description="AI-driven foraging and storage."
-                  onClick={() => onManageCamp('resource')}
+                  label="Forage" 
+                  description="Search the zone for food supplies."
+                  onClick={() => onManageCamp('forage')}
                 />
                 <ActionButton 
-                  icon={Shield} 
-                  label="Fortify Shelter" 
-                  description="Structural AI analysis for safety."
-                  onClick={() => onManageCamp('infrastructure')}
+                  icon={Moon} 
+                  label="End Day" 
+                  description="Rest and process survival mechanics."
+                  onClick={onEndDay}
                 />
               </div>
             </div>
@@ -194,6 +216,16 @@ const CampLife: React.FC<CampLifeProps> = ({ gameState, onInteract, onManageCamp
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <InteractionButton 
+                      label="Give Food" 
+                      description="Build trust (+1 Food)"
+                      onClick={() => onInteract(selectedContestant.id, 'give_food')}
+                    />
+                    <InteractionButton 
+                      label="Take Food" 
+                      description="Steal supplies (-1 Food)"
+                      onClick={() => onInteract(selectedContestant.id, 'take_food')}
+                    />
+                    <InteractionButton 
                       label="AI Alliance Pitch" 
                       description="Use AI to calculate shared interests."
                       onClick={() => onInteract(selectedContestant.id, 'alliance')}
@@ -202,16 +234,6 @@ const CampLife: React.FC<CampLifeProps> = ({ gameState, onInteract, onManageCamp
                       label="Social Intelligence" 
                       description="Learn about their motivations via AI."
                       onClick={() => onInteract(selectedContestant.id, 'learn')}
-                    />
-                    <InteractionButton 
-                      label="Strategic Planning" 
-                      description="Simulate voting scenarios together."
-                      onClick={() => onInteract(selectedContestant.id, 'strategy')}
-                    />
-                    <InteractionButton 
-                      label="Emotional Support" 
-                      description="AI-assisted empathy and bonding."
-                      onClick={() => onInteract(selectedContestant.id, 'bond')}
                     />
                   </div>
                 </motion.div>

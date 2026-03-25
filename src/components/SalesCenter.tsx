@@ -1,19 +1,44 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ShoppingBag, Zap, CheckCircle2, Lock, ArrowRight, Brain, DollarSign, Briefcase, Rocket, Mail, Shield, Sword, Heart } from 'lucide-react';
+import { X, ShoppingBag, Zap, CheckCircle2, Lock, ArrowRight, Brain, DollarSign, Briefcase, Rocket, Mail, Shield, Sword, Heart, Activity, TrendingUp, BarChart3, Eye } from 'lucide-react';
 import { SALES_ITEMS } from '../gameConstants';
 
 interface SalesCenterProps {
   sandDollars: number;
+  isParadiseMember: boolean;
   onPurchase: (itemId: string) => void;
   onClose: () => void;
 }
 
 const SalesCenter: React.FC<SalesCenterProps> = ({
   sandDollars,
+  isParadiseMember,
   onPurchase,
   onClose
 }) => {
+  const [activeCategory, setActiveCategory] = React.useState<string>('all');
+
+  const categories = [
+    { id: 'all', name: 'All Items', icon: ShoppingBag },
+    { id: 'survival', name: 'Survival', icon: Shield },
+    { id: 'workflow', name: 'Workflows', icon: Zap },
+    { id: 'package', name: 'Packages', icon: Briefcase },
+    { id: 'implementation', name: 'Implementation', icon: Rocket },
+    { id: 'monitoring', name: 'Monitoring', icon: Activity },
+  ];
+
+  const filteredItems = activeCategory === 'all' 
+    ? SALES_ITEMS 
+    : SALES_ITEMS.filter(item => item.category === activeCategory);
+
+  const getDiscountedPrice = (item: any) => {
+    if (!isParadiseMember) return item.cost;
+    // 25% discount for members on business-related items
+    if (['workflow', 'package', 'implementation', 'monitoring'].includes(item.category || '')) {
+      return Math.floor(item.cost * 0.75);
+    }
+    return item.cost;
+  };
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -48,11 +73,36 @@ const SalesCenter: React.FC<SalesCenterProps> = ({
           </div>
         </div>
 
+        {/* Category Navigation */}
+        <div className="px-10 py-4 border-b border-orange-900/10 bg-black/20 flex items-center gap-4 overflow-x-auto no-scrollbar">
+          {categories.map((cat) => {
+            const Icon = cat.icon;
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.id)}
+                className={`flex items-center gap-2 px-6 py-2.5 rounded-full border transition-all whitespace-nowrap ${
+                  activeCategory === cat.id
+                    ? 'bg-orange-600 border-orange-500 text-white shadow-lg shadow-orange-600/20'
+                    : 'bg-white/5 border-white/10 text-orange-100/40 hover:border-orange-500/30 hover:text-orange-400'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                <span className="text-[10px] font-bold uppercase tracking-widest">{cat.name}</span>
+              </button>
+            );
+          })}
+        </div>
+
         {/* Items Grid */}
         <div className="flex-1 p-10 overflow-y-auto custom-scrollbar">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {SALES_ITEMS.map((item) => {
-              const canAfford = sandDollars >= item.cost;
+            {filteredItems.map((item) => {
+              const discountedPrice = getDiscountedPrice(item);
+              const canAfford = sandDollars >= discountedPrice;
+              const hasDiscount = discountedPrice < item.cost;
+
+              if (item.isMemberOnly && !isParadiseMember) return null;
 
               return (
                 <motion.div
@@ -65,17 +115,37 @@ const SalesCenter: React.FC<SalesCenterProps> = ({
                       {item.id === 'health_pack' ? <Heart className="w-7 h-7" /> :
                        item.id === 'shield_gen' ? <Shield className="w-7 h-7" /> :
                        item.id === 'neural_boost' ? <Zap className="w-7 h-7" /> :
+                       item.id === 'secret_ai_key' ? <Brain className="w-7 h-7" /> :
+                       item.category === 'workflow' ? <Zap className="w-7 h-7" /> :
+                       item.category === 'package' ? <Briefcase className="w-7 h-7" /> :
+                       item.category === 'implementation' ? <Rocket className="w-7 h-7" /> :
+                       item.category === 'monitoring' ? <Activity className="w-7 h-7" /> :
                        <Sword className="w-7 h-7" />}
                     </div>
-                    <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full border ${
-                      canAfford ? 'bg-orange-900/20 border-orange-500/30 text-orange-400' : 'bg-red-900/20 border-red-500/30 text-red-400 opacity-50'
-                    }`}>
-                      <Zap className="w-4 h-4 fill-current" />
-                      <span className="text-sm font-bold font-mono">{item.cost} SD</span>
+                    <div className="text-right">
+                      {hasDiscount && (
+                        <span className="text-[10px] text-gray-500 line-through block mb-1 font-mono">
+                          {item.cost} SD
+                        </span>
+                      )}
+                      <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full border ${
+                        canAfford ? 'bg-orange-900/20 border-orange-500/30 text-orange-400' : 'bg-red-900/20 border-red-500/30 text-red-400 opacity-50'
+                      }`}>
+                        <Zap className={`w-4 h-4 ${hasDiscount ? 'text-green-400 fill-green-400' : 'fill-current'}`} />
+                        <span className={`text-sm font-bold font-mono ${hasDiscount ? 'text-green-400' : ''}`}>
+                          {discountedPrice} SD
+                        </span>
+                      </div>
                     </div>
                   </div>
 
-                  <h3 className="text-2xl font-bold text-white uppercase italic mb-3 tracking-tighter">{item.name}</h3>
+                  <div className="mb-4">
+                    <span className="text-[8px] font-mono text-orange-500/60 uppercase tracking-[0.3em] mb-1 block">
+                      {item.category || 'General'}
+                    </span>
+                    <h3 className="text-2xl font-bold text-white uppercase italic tracking-tighter">{item.name}</h3>
+                  </div>
+                  
                   <p className="text-xs text-orange-100/60 font-mono leading-relaxed mb-10 flex-1">{item.description}</p>
 
                   <button
@@ -90,7 +160,7 @@ const SalesCenter: React.FC<SalesCenterProps> = ({
                     {canAfford ? (
                       <>
                         <ShoppingBag className="w-5 h-5" />
-                        Purchase Item
+                        {item.category === 'implementation' ? 'Request Service' : 'Purchase Item'}
                       </>
                     ) : (
                       <>

@@ -62,10 +62,10 @@ export const SKILLS: Skill[] = [
 ];
 
 export const TIERS: Tier[] = [
-  { id: 'initiate', name: 'Initiate', price: 0, description: 'Begin your journey on Hatteras Island.', features: ['Basic Exploration', 'Community Chat', 'Standard AI Learning'] },
-  { id: 'automator', name: 'Automator', price: 9, description: 'Enhance your presence with automated tools.', features: ['Priority Signals', 'Advanced Diagnostics', 'Neural Boosts'] },
-  { id: 'architect', name: 'Architect', price: 29, description: 'Shape the future of the island nexus.', features: ['Custom Realms', 'Faction Leadership', 'Deep Memory Access'] },
-  { id: 'sovereign', name: 'Sovereign', price: 99, description: 'Become one with the island soul.', features: ['Full AI Control', 'Unlimited Sand Dollars', 'Eternal Legacy'] }
+  { id: 'initiate', name: 'Initiate', price: 0, description: 'Begin your journey on Hatteras Island.', features: ['Basic Exploration', 'Community Chat', 'Standard AI Learning', 'Secret AI Key Access'] },
+  { id: 'paradise_pass', name: 'Paradise Pass', price: 17, description: 'Individual Paradise Pass. Access to the never-ending survival world.', features: ['Founder\'s Resilience Buff', 'Monthly Survivor Buffs', 'Access to all 7 villages', 'Secret AI Key Access'] },
+  { id: 'smb_suite', name: 'SMB AI Training Suite', price: 150, description: 'Access to pre-built Generative Agent templates.', features: ['Customer Service Agents', 'Monthly Webinars', 'LangGraph Studio Access', 'Secret AI Key Access'] },
+  { id: 'enterprise', name: 'Enterprise Strategy', price: 1000, description: 'Direct strategic collaboration with the Lead Architect.', features: ['Cognitive Consultations with Manny', 'Custom 3D Environments', 'Full AI Control', 'Secret AI Key Access'] }
 ];
 
 export const FACTIONS: Faction[] = [
@@ -75,9 +75,46 @@ export const FACTIONS: Faction[] = [
 ];
 
 export const SALES_ITEMS: SalesItem[] = [
-  { id: 'health_pack', name: 'Neural Patch', description: 'Restore 25 Vitality.', cost: 20 },
-  { id: 'shield_gen', name: 'Signal Shield', description: 'Temporary protection from threats.', cost: 40 },
-  { id: 'neural_boost', name: 'Evolution Spark', description: 'Instantly gain 0.05 Evolution.', cost: 100 }
+  // Survival Items
+  { id: 'health_pack', name: 'Neural Patch', description: 'Restore 25 Vitality.', cost: 20, category: 'survival' },
+  { id: 'shield_gen', name: 'Signal Shield', description: 'Temporary protection from threats.', cost: 40, category: 'survival' },
+  { id: 'neural_boost', name: 'Evolution Spark', description: 'Instantly gain 0.05 Evolution.', cost: 100, category: 'survival' },
+  { id: 'branded_machete', name: 'Branded Machete', description: 'Features the "Pick Your Tools" logo. Essential for searching the Buxton Woods.', cost: 5, category: 'survival' },
+  { id: 'pro_fishing_rod', name: 'Professional Fishing Rod', description: 'Features the "Pick Your Tools" logo. Improves Catch Fish outcomes.', cost: 7, category: 'survival' },
+  
+  // Business Workflows (DIY)
+  { id: 'automated_social_workflow', name: 'Social Resonance Workflow', description: 'Self-service AI workflow for automated social media engagement.', cost: 150, category: 'workflow' },
+  { id: 'email_marketing_agent', name: 'Neural Outreach Agent', description: 'Individual AI application for personalized email marketing campaigns.', cost: 200, category: 'workflow' },
+  { id: 'smb_growth_bundle', name: 'SMB Growth Package', description: 'A combo of 3 top-tier AI workflows for business expansion.', cost: 450, category: 'package' },
+  
+  // Implementation Services (DFY - Fair Market Value)
+  { id: 'custom_ai_implementation', name: 'Expert AI Implementation', description: 'Fair Market Value service: We implement a custom AI solution for your business.', cost: 1500, category: 'implementation' },
+  { id: 'enterprise_workflow_setup', name: 'Enterprise Strategy Setup', description: 'Full implementation of advanced business elevation tools by our team.', cost: 2500, category: 'implementation' },
+  
+  // Monitoring Tools
+  { id: 'neural_nexus_monitor', name: 'Neural Nexus Monitor', description: 'Real-time dashboard to monitor all your AI business workflows.', cost: 300, category: 'monitoring' },
+  { id: 'competitor_ai_tracker', name: 'Competitor AI Tracker', description: 'Monitor competitor AI strategies and market shifts in real-time.', cost: 350, category: 'monitoring' },
+  
+  // Special Items
+  { id: 'secret_ai_key', name: 'Secret AI Key', description: 'Elevate your business with the ultimate AI secret. Unlocks advanced business elevation tools.', cost: 500, category: 'workflow' },
+  { id: 'survivor_buff', name: 'Survivor Buff', description: 'A monthly recurring item for Paradise Members.', cost: 0, category: 'survival', isMemberOnly: true }
+];
+
+export const VILLAGES = [
+  'Rodanthe',
+  'Waves',
+  'Salvo',
+  'Avon',
+  'Buxton',
+  'Frisco',
+  'Hatteras Village'
+];
+
+export const ZONES = [
+  { id: 'beaches', name: 'Beaches', description: 'High-energy coastal environment.' },
+  { id: 'dunes', name: 'Dunes', description: 'Stabilized by grasses and shrubs.' },
+  { id: 'maritime_forests', name: 'Maritime Forests', description: 'Dense trees and shrubs, ideal for foraging.' },
+  { id: 'salt_marshes', name: 'Salt Marshes', description: 'Biologically rich estuary, ideal for fishing.' }
 ];
 
 export const SURVIVOR_CHALLENGES: SurvivorChallenge[] = [

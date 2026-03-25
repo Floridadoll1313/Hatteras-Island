@@ -51,8 +51,8 @@ const PricingOverlay: React.FC<PricingOverlayProps> = ({
                 <div className="flex items-center justify-between mb-8">
                   <div className="w-10 h-10 rounded-xl bg-orange-900/20 flex items-center justify-center text-orange-500 group-hover:scale-110 transition-transform">
                     {tier.id === 'initiate' ? <Mail className="w-5 h-5" /> :
-                     tier.id === 'automator' ? <BarChart3 className="w-5 h-5" /> :
-                     tier.id === 'architect' ? <Briefcase className="w-5 h-5" /> :
+                     tier.id === 'paradise_pass' ? <BarChart3 className="w-5 h-5" /> :
+                     tier.id === 'smb_suite' ? <Briefcase className="w-5 h-5" /> :
                      <Rocket className="w-5 h-5" />}
                   </div>
                   <div className="text-right">

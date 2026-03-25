@@ -25,10 +25,19 @@ interface TribalCouncilProps {
 const TribalCouncil: React.FC<TribalCouncilProps> = ({ contestants, alliances, onVote, onClose }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isVoting, setIsVoting] = useState(false);
-  const [voteStage, setVoteStage] = useState<'discussion' | 'voting' | 'reveal'>('discussion');
+  const [voteStage, setVoteStage] = useState<'accusation' | 'voting' | 'reveal'>('accusation');
+  const [trustTokens, setTrustTokens] = useState<Record<string, 1 | 0 | -1>>({});
 
   const activeContestants = contestants.filter(c => c.status === 'active');
   const player = contestants.find(c => c.isPlayer);
+
+  const handleTrustToken = (contestantId: string, value: 1 | 0 | -1) => {
+    setTrustTokens(prev => ({ ...prev, [contestantId]: value }));
+  };
+
+  const handleProceedToVote = () => {
+    setVoteStage('voting');
+  };
 
   const handleVote = async () => {
     if (!selectedId) return;
@@ -63,11 +72,16 @@ const TribalCouncil: React.FC<TribalCouncilProps> = ({ contestants, alliances, o
           <div className="relative z-10 space-y-4">
             <div className="flex items-center gap-3 text-orange-500">
               <Flame className="w-6 h-6 animate-pulse" />
-              <span className="text-xs font-mono tracking-[0.4em] uppercase font-bold">Tribal Council</span>
+              <span className="text-xs font-mono tracking-[0.4em] uppercase font-bold">
+                {voteStage === 'accusation' ? 'Accusation Phase' : 'Tribal Council'}
+              </span>
             </div>
             <h2 className="text-7xl font-black tracking-tighter uppercase italic leading-none">
-              The Fire Represents <br />
-              <span className="text-orange-500">Your Life</span>
+              {voteStage === 'accusation' ? (
+                <>Trust <span className="text-orange-500">Signaling</span></>
+              ) : (
+                <>The Fire Represents <br /><span className="text-orange-500">Your Life</span></>
+              )}
             </h2>
           </div>
 
@@ -94,18 +108,36 @@ const TribalCouncil: React.FC<TribalCouncilProps> = ({ contestants, alliances, o
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {activeContestants.map((contestant) => (
-                <motion.button
+                <motion.div
                   key={contestant.id}
                   whileHover={{ scale: 1.02, y: -4 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => !contestant.isPlayer && setSelectedId(contestant.id)}
-                  disabled={contestant.isPlayer || voteStage === 'reveal'}
+                  onClick={() => {
+                    if (voteStage === 'voting' && !contestant.isPlayer) setSelectedId(contestant.id);
+                  }}
                   className={`relative p-6 rounded-[2rem] border transition-all duration-300 text-left group overflow-hidden ${
-                    selectedId === contestant.id 
+                    selectedId === contestant.id && voteStage === 'voting'
                       ? 'bg-orange-500/10 border-orange-500 shadow-lg shadow-orange-500/20' 
                       : 'bg-white/5 border-white/10 hover:border-white/20'
-                  } ${contestant.isPlayer ? 'opacity-80 cursor-default' : ''}`}
+                  } ${contestant.isPlayer ? 'opacity-80 cursor-default' : 'cursor-pointer'}`}
                 >
+                  {/* Trust Tokens (Accusation Phase) */}
+                  {voteStage === 'accusation' && !contestant.isPlayer && (
+                    <div className="absolute top-4 right-4 flex gap-1 bg-[#0a0a0a] p-1 rounded-full border border-white/10 shadow-xl z-20">
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleTrustToken(contestant.id, 1); }}
+                        className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${trustTokens[contestant.id] === 1 ? 'bg-green-500 text-black' : 'bg-white/5 text-green-500 hover:bg-green-500/20'}`}
+                      >+1</button>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleTrustToken(contestant.id, 0); }}
+                        className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${trustTokens[contestant.id] === 0 ? 'bg-gray-500 text-black' : 'bg-white/5 text-gray-400 hover:bg-gray-500/20'}`}
+                      >0</button>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleTrustToken(contestant.id, -1); }}
+                        className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${trustTokens[contestant.id] === -1 ? 'bg-red-500 text-black' : 'bg-white/5 text-red-500 hover:bg-red-500/20'}`}
+                      >-1</button>
+                    </div>
+                  )}
+
                   <div className="flex items-start justify-between mb-4">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
@@ -129,7 +161,7 @@ const TribalCouncil: React.FC<TribalCouncilProps> = ({ contestants, alliances, o
 
                   {/* Selection Indicator */}
                   <AnimatePresence>
-                    {selectedId === contestant.id && (
+                    {selectedId === contestant.id && voteStage === 'voting' && (
                       <motion.div 
                         initial={{ opacity: 0, scale: 0 }}
                         animate={{ opacity: 1, scale: 1 }}
@@ -147,7 +179,7 @@ const TribalCouncil: React.FC<TribalCouncilProps> = ({ contestants, alliances, o
                   <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:opacity-10 transition-opacity">
                     <Flame className="w-24 h-24 rotate-12" />
                   </div>
-                </motion.button>
+                </motion.div>
               ))}
             </div>
           </div>
@@ -160,52 +192,70 @@ const TribalCouncil: React.FC<TribalCouncilProps> = ({ contestants, alliances, o
               </div>
 
               <div className="space-y-4 relative z-10">
-                <h3 className="text-2xl font-bold uppercase tracking-tight">The Decision</h3>
+                <h3 className="text-2xl font-bold uppercase tracking-tight">
+                  {voteStage === 'accusation' ? 'Opinion Vetting' : 'The Decision'}
+                </h3>
                 <p className="text-sm text-gray-400 leading-relaxed">
-                  "In this game, fire represents your life. When your fire's gone, so are you."
+                  {voteStage === 'accusation' 
+                    ? 'Use Dis&approval Voting (+1, 0, -1) to broadcast trust signals and form consensus before the final vote.'
+                    : '"In this game, fire represents your life. When your fire\'s gone, so are you."'}
                 </p>
               </div>
 
               <div className="space-y-6 relative z-10">
-                <div className="p-6 bg-black/40 rounded-2xl border border-white/10 space-y-4">
-                  <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-widest text-gray-500">
-                    <span>Selected Target</span>
-                    <Skull className="w-3 h-3" />
+                {voteStage === 'accusation' ? (
+                  <div className="space-y-3">
+                    <button
+                      onClick={handleProceedToVote}
+                      className="w-full py-5 rounded-2xl font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 bg-blue-500 text-black hover:bg-blue-400 shadow-lg shadow-blue-500/20"
+                    >
+                      <span>Proceed to Elimination Vote</span>
+                      <ArrowRight className="w-5 h-5" />
+                    </button>
                   </div>
-                  <div className="text-2xl font-black text-orange-500 uppercase italic">
-                    {selectedId ? activeContestants.find(c => c.id === selectedId)?.name : 'None Selected'}
-                  </div>
-                </div>
+                ) : (
+                  <>
+                    <div className="p-6 bg-black/40 rounded-2xl border border-white/10 space-y-4">
+                      <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-widest text-gray-500">
+                        <span>Selected Target</span>
+                        <Skull className="w-3 h-3" />
+                      </div>
+                      <div className="text-2xl font-black text-orange-500 uppercase italic">
+                        {selectedId ? activeContestants.find(c => c.id === selectedId)?.name : 'None Selected'}
+                      </div>
+                    </div>
 
-                <div className="space-y-3">
-                  <button
-                    onClick={handleVote}
-                    disabled={!selectedId || isVoting || voteStage === 'reveal'}
-                    className={`w-full py-5 rounded-2xl font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 ${
-                      !selectedId || isVoting || voteStage === 'reveal'
-                        ? 'bg-white/5 text-gray-600 cursor-not-allowed'
-                        : 'bg-orange-500 text-black hover:bg-orange-400 shadow-lg shadow-orange-500/20'
-                    }`}
-                  >
-                    {isVoting ? (
-                      <motion.div 
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                    <div className="space-y-3">
+                      <button
+                        onClick={handleVote}
+                        disabled={!selectedId || isVoting || voteStage === 'reveal'}
+                        className={`w-full py-5 rounded-2xl font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 ${
+                          !selectedId || isVoting || voteStage === 'reveal'
+                            ? 'bg-white/5 text-gray-600 cursor-not-allowed'
+                            : 'bg-orange-500 text-black hover:bg-orange-400 shadow-lg shadow-orange-500/20'
+                        }`}
                       >
-                        <Sparkles className="w-5 h-5" />
-                      </motion.div>
-                    ) : (
-                      <>
-                        <span>Cast Your Vote</span>
-                        <ArrowRight className="w-5 h-5" />
-                      </>
-                    )}
-                  </button>
+                        {isVoting ? (
+                          <motion.div 
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                          >
+                            <Sparkles className="w-5 h-5" />
+                          </motion.div>
+                        ) : (
+                          <>
+                            <span>Cast Your Vote</span>
+                            <ArrowRight className="w-5 h-5" />
+                          </>
+                        )}
+                      </button>
 
-                  <p className="text-[10px] font-mono text-center text-gray-600 uppercase tracking-widest">
-                    This action cannot be undone
-                  </p>
-                </div>
+                      <p className="text-[10px] font-mono text-center text-gray-600 uppercase tracking-widest">
+                        This action cannot be undone
+                      </p>
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Alliances Info */}

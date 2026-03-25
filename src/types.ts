@@ -98,6 +98,13 @@ export interface Contestant {
   status: ContestantStatus;
   isPlayer: boolean;
   aiModel?: string;
+  impressions?: Record<string, number>; // Theory of Mind impressions of other villagers
+  persona?: {
+    traitScales: { stubbornVsAgreeable: number; cooperationVsInitiative: number };
+    archetype: string;
+  };
+  memoryStream?: string[];
+  strategicGoals?: string[];
 }
 
 export interface Alliance {
@@ -159,6 +166,9 @@ export interface SurvivorState {
   campInfrastructure: number;
   tribeLevel: number;
   sandDollars: number;
+  fullness: number;
+  hitPoints: number;
+  foodSupply: number;
 }
 
 export type FactionType = 'surfers' | 'keepers' | 'pirates' | null;
@@ -186,6 +196,8 @@ export interface GameState {
   evolution: number;
   discoveredRealms: string[];
   currentRealm: Realm;
+  currentVillage?: string;
+  currentZone?: string;
   inventory: string[];
   skills: string[];
   traits: string[];
@@ -197,7 +209,7 @@ export interface GameState {
   business?: BusinessState;
   history?: string[]; // Compatibility
   tasks?: any[]; // Compatibility
-  isMember?: boolean; // For members area logic
+  isParadiseMember?: boolean; // For members area logic
 }
 
 export interface Skill {
@@ -228,4 +240,6 @@ export interface SalesItem {
   name: string;
   description: string;
   cost: number;
+  category?: 'survival' | 'workflow' | 'package' | 'implementation' | 'monitoring';
+  isMemberOnly?: boolean;
 }

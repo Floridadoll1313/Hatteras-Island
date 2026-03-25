@@ -37,6 +37,9 @@ interface SidebarProps {
   onShowSales: () => void;
   onShowAILab: () => void;
   onShowCampLife: () => void;
+  onShowMembersArea: () => void;
+  onShowMannyRogers: () => void;
+  onShowSalvoMemorial: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
@@ -50,7 +53,10 @@ const Sidebar: React.FC<SidebarProps> = ({
   onShowBusiness,
   onShowSales,
   onShowAILab,
-  onShowCampLife
+  onShowCampLife,
+  onShowMembersArea,
+  onShowMannyRogers,
+  onShowSalvoMemorial
 }) => {
   const [isOpen, setIsOpen] = React.useState(true);
 
@@ -270,6 +276,9 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <HubButton icon={Compass} label="Faction Selection" onClick={onShowFactions} color="text-emerald-400" />
                 <HubButton icon={LayoutDashboard} label="Business Dashboard" onClick={onShowBusiness} color="text-purple-400" />
                 <HubButton icon={ShoppingBag} label="Sales Center" onClick={onShowSales} color="text-pink-400" />
+                <HubButton icon={Sparkles} label="Members Area" onClick={onShowMembersArea} color="text-yellow-400" />
+                <HubButton icon={Brain} label="Manny Rogers (AI Strategist)" onClick={onShowMannyRogers} color="text-blue-400" />
+                <HubButton icon={Heart} label="Salvo Memorial" onClick={onShowSalvoMemorial} color="text-red-400" />
               </motion.div>
             )}
           </AnimatePresence>
