@@ -13,6 +13,59 @@ async function startServer() {
 
   app.use(express.json());
 
+  // Mock Auth Middleware for Demo
+  // In a real app, this would verify a Firebase ID token or session cookie
+  app.use((req: any, res, next) => {
+    const authHeader = req.headers.authorization;
+    if (authHeader === 'Bearer mock-tribe-leader-token') {
+      req.user = {
+        id: 'user_123',
+        role: 'TRIBE_LEADER',
+        villageId: 'hatteras_village'
+      };
+    } else {
+      req.user = {
+        id: 'user_456',
+        role: 'VILLAGER',
+        villageId: 'hatteras_village'
+      };
+    }
+    next();
+  });
+
+  // Express middleware for Tribe Leaders
+  const authorizeTribeLeader = async (req: any, res: any, next: any) => {
+    const { user } = req;
+    
+    // Verify if the user is a Tribe Leader for this specific Village
+    if (user && user.role === 'TRIBE_LEADER' && user.villageId === req.params.villageId) {
+      return next();
+    }
+    
+    return res.status(403).json({ 
+      message: "The Council has spoken: Only Tribe Leaders can manage these tools." 
+    });
+  };
+
+  // API Route to unlock a new "Survival Toolbox" (Automation)
+  app.patch('/api/village/:villageId/toolbox/:toolId', authorizeTribeLeader, async (req, res) => {
+    const { villageId, toolId } = req.params;
+    
+    // Logic to 'Buy Back Time' by unlocking high-value business tools
+    console.log(`Unlocking Survival Toolbox: ${toolId} for Village: ${villageId}`);
+    
+    res.json({
+      success: true,
+      message: `Survival Toolbox '${toolId}' has been successfully unlocked for ${villageId}.`,
+      unlockedAt: new Date().toISOString(),
+      toolDetails: {
+        id: toolId,
+        status: 'active',
+        efficiencyBoost: '25%'
+      }
+    });
+  });
+
   // Stripe Checkout Endpoint
   app.post("/api/create-checkout-session", async (req, res) => {
     if (!stripe) {

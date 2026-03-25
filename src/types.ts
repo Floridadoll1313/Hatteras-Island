@@ -85,6 +85,15 @@ export interface LighthouseState {
   energyEfficiency?: number;
 }
 
+export type SocialPhase = 'day' | 'accusation' | 'voting' | 'night' | 'dawn';
+export type VotingToken = 1 | 0 | -1 | string;
+
+export interface BDILogic {
+  beliefs: string[];
+  desires: string[];
+  intentions: string[];
+}
+
 export type ContestantStatus = 'active' | 'voted_out' | 'medevac' | 'eliminated';
 
 export interface Contestant {
@@ -105,6 +114,8 @@ export interface Contestant {
   };
   memoryStream?: string[];
   strategicGoals?: string[];
+  role?: 'villager' | 'wolf';
+  bdi?: BDILogic;
 }
 
 export interface Alliance {
@@ -169,6 +180,13 @@ export interface SurvivorState {
   fullness: number;
   hitPoints: number;
   foodSupply: number;
+  phase: SocialPhase;
+  votingHistory: Record<string, Record<string, VotingToken>>; // day_phase -> voterId -> token/targetId
+  metrics: {
+    majorityWinRate: number;
+    tieIndicator: number;
+    coordinationEfficiency: number;
+  };
 }
 
 export type FactionType = 'surfers' | 'keepers' | 'pirates' | null;
@@ -210,6 +228,8 @@ export interface GameState {
   history?: string[]; // Compatibility
   tasks?: any[]; // Compatibility
   isParadiseMember?: boolean; // For members area logic
+  villageId?: string;
+  role?: 'TRIBE_LEADER' | 'VILLAGER';
 }
 
 export interface Skill {

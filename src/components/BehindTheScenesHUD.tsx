@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Eye, EyeOff, Brain, Database, Activity, Target } from 'lucide-react';
+import { Eye, EyeOff, Brain, Database, Activity, Target, Users } from 'lucide-react';
 import { GameState } from '../types';
 
 interface BehindTheScenesHUDProps {
@@ -63,6 +63,19 @@ const BehindTheScenesHUD: React.FC<BehindTheScenesHUDProps> = ({ gameState }) =>
                   <div className="pl-4 text-gray-400">├─ EQS Query: Find Resource Nodes</div>
                   <div className="pl-4 text-gray-400">├─ Check Threat Level (Low)</div>
                   <div className="pl-4 text-green-400">└─ Determine Action (Idle)</div>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Users className="w-3 h-3 text-gray-400" />
+                  <span className="text-[10px] font-mono text-gray-400 uppercase">Social Choice Metrics</span>
+                </div>
+                <div className="bg-white/5 rounded-lg p-2 font-mono text-[10px] text-orange-400 space-y-1">
+                  <div>Phase: {gameState.survivor.phase}</div>
+                  <div>Majority Win Rate: {(gameState.survivor.metrics.majorityWinRate * 100).toFixed(1)}%</div>
+                  <div>Tie Indicator: {(gameState.survivor.metrics.tieIndicator * 100).toFixed(1)}%</div>
+                  <div>Coordination Efficiency: {(gameState.survivor.metrics.coordinationEfficiency * 100).toFixed(1)}%</div>
                 </div>
               </div>
             </div>

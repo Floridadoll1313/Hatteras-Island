@@ -36,8 +36,8 @@ export const INITIAL_REALM: Realm = {
   name: 'Hatteras Landing',
   description: 'The gateway to the island. A place of shifting sands and ancient echoes.',
   lore: 'Generations of islanders have started their journey here, where the sound meets the sea.',
-  entities: ['Old Pier', 'Driftwood Shrine', 'Neural Anchor'],
-  options: ['Explore the Pier', 'Meditate at the Shrine', 'Scan for Signals'],
+  entities: ['Old Pier', 'Driftwood Shrine', 'Neural Anchor', 'Bull Hooper Memorial'],
+  options: ['Explore the Pier', 'Meditate at the Shrine', 'Scan for Signals', 'Visit the Memorial'],
   paths: [
     { id: 'pier', label: 'The Old Pier', description: 'Venture onto the creaking wood.', risk: 'low' },
     { id: 'dunes', label: 'The Shifting Dunes', description: 'Navigate the unpredictable sands.', risk: 'medium' }
@@ -114,7 +114,8 @@ export const ZONES = [
   { id: 'beaches', name: 'Beaches', description: 'High-energy coastal environment.' },
   { id: 'dunes', name: 'Dunes', description: 'Stabilized by grasses and shrubs.' },
   { id: 'maritime_forests', name: 'Maritime Forests', description: 'Dense trees and shrubs, ideal for foraging.' },
-  { id: 'salt_marshes', name: 'Salt Marshes', description: 'Biologically rich estuary, ideal for fishing.' }
+  { id: 'salt_marshes', name: 'Salt Marshes', description: 'Biologically rich estuary, ideal for fishing.' },
+  { id: 'memorial', name: 'Bull Hooper Memorial', description: 'A technical Safe Zone and narrative anchor. Zero-collision coordinates.' }
 ];
 
 export const SURVIVOR_CHALLENGES: SurvivorChallenge[] = [
@@ -128,7 +129,9 @@ export const AI_KNOWLEDGE_PIECES: Omit<AIKnowledgePiece, 'timestamp'>[] = [
   { id: 'piece-1', title: 'Social Dynamics', description: 'Understanding how tribe members interact.', category: 'social' },
   { id: 'piece-2', title: 'Resource Optimization', description: 'Using AI to manage camp supplies.', category: 'technical' },
   { id: 'piece-3', title: 'Strategic Voting', description: 'Predicting Tribal Council outcomes.', category: 'strategic' },
-  { id: 'piece-4', title: 'Wilderness Survival', description: 'AI-assisted foraging and shelter building.', category: 'survival' }
+  { id: 'piece-4', title: 'Wilderness Survival', description: 'AI-assisted foraging and shelter building.', category: 'survival' },
+  { id: 'piece-5', title: 'BDI Architecture', description: 'Belief-Desire-Intention logic for cognitive agents.', category: 'technical' },
+  { id: 'piece-6', title: 'Trust Signaling', description: 'Using trinary voting (+1, 0, -1) to vet participants.', category: 'social' }
 ];
 
 export const TRIBE_LEVELS = [
@@ -186,11 +189,71 @@ export const INITIAL_IDOLS: HiddenIdol[] = [
 ];
 
 export const INITIAL_CONTESTANTS: Contestant[] = [
-  { id: 'player', name: 'You', archetype: 'The Strategist', threatLevel: 5, loyalty: 10, strategicAbility: 8, physicalAbility: 7, status: 'active', isPlayer: true },
-  { id: 'ai-1', name: 'Mako', archetype: 'The Athlete', threatLevel: 7, loyalty: 6, strategicAbility: 4, physicalAbility: 9, status: 'active', isPlayer: false },
-  { id: 'ai-2', name: 'Coral', archetype: 'The Socialite', threatLevel: 4, loyalty: 8, strategicAbility: 6, physicalAbility: 5, status: 'active', isPlayer: false },
-  { id: 'ai-3', name: 'Drift', archetype: 'The Wildcard', threatLevel: 6, loyalty: 4, strategicAbility: 7, physicalAbility: 6, status: 'active', isPlayer: false },
-  { id: 'ai-4', name: 'Shell', archetype: 'The Provider', threatLevel: 3, loyalty: 9, strategicAbility: 5, physicalAbility: 8, status: 'active', isPlayer: false }
+  { 
+    id: 'player', 
+    name: 'You', 
+    archetype: 'The Strategist', 
+    threatLevel: 5, 
+    loyalty: 10, 
+    strategicAbility: 8, 
+    physicalAbility: 7, 
+    status: 'active', 
+    isPlayer: true,
+    role: 'villager',
+    bdi: { beliefs: ['I am safe'], desires: ['Survive'], intentions: ['Gather resources'] }
+  },
+  { 
+    id: 'ai-1', 
+    name: 'Mako', 
+    archetype: 'The Athlete', 
+    threatLevel: 7, 
+    loyalty: 6, 
+    strategicAbility: 4, 
+    physicalAbility: 9, 
+    status: 'active', 
+    isPlayer: false,
+    role: 'villager',
+    bdi: { beliefs: ['The player is trustworthy'], desires: ['Win challenges'], intentions: ['Train'] }
+  },
+  { 
+    id: 'ai-2', 
+    name: 'Coral', 
+    archetype: 'The Socialite', 
+    threatLevel: 4, 
+    loyalty: 8, 
+    strategicAbility: 6, 
+    physicalAbility: 5, 
+    status: 'active', 
+    isPlayer: false,
+    role: 'wolf',
+    bdi: { beliefs: ['Mako is a threat'], desires: ['Eliminate villagers'], intentions: ['Sow discord'] }
+  },
+  { 
+    id: 'ai-3', 
+    name: 'Drift', 
+    archetype: 'The Wildcard', 
+    threatLevel: 6, 
+    loyalty: 4, 
+    strategicAbility: 7, 
+    physicalAbility: 6, 
+    status: 'active', 
+    isPlayer: false,
+    role: 'villager',
+    bdi: { beliefs: ['Something is wrong'], desires: ['Find the truth'], intentions: ['Observe others'] }
+  },
+  { 
+    id: 'ai-4', 
+    name: 'Shell', 
+    archetype: 'The Provider', 
+    threatLevel: 3, 
+    loyalty: 9, 
+    strategicAbility: 5, 
+    physicalAbility: 8, 
+    status: 'active', 
+    isPlayer: false,
+    role: 'villager',
+    bdi: { beliefs: ['We must work together'], desires: ['Keep camp running'], intentions: ['Cook food'] }
+  }
 ];
 
 export const AI_TRAITS = [

@@ -90,7 +90,8 @@ import {
   BranchingPath,
   AIKnowledgePiece,
   BusinessAIChallenge,
-  HiddenIdol
+  HiddenIdol,
+  SocialPhase
 } from './types';
 import { 
   INITIAL_REALM, 
@@ -112,7 +113,8 @@ import {
   generateSurvivorDialogue, 
   generateTribalCouncilOutcome, 
   generateAIAllianceLogic,
-  validateBusinessSolution
+  validateBusinessSolution,
+  generateSocialDeductionMetrics
 } from './services/geminiService';
 
 // Firebase Config
@@ -168,11 +170,20 @@ const App: React.FC = () => {
       sandDollars: 50,
       fullness: 3,
       hitPoints: 100,
-      foodSupply: 10
+      foodSupply: 10,
+      phase: 'day',
+      votingHistory: {},
+      metrics: {
+        majorityWinRate: 0,
+        tieIndicator: 0,
+        coordinationEfficiency: 0
+      }
     },
     history: ['Woke up on Hatteras Island.'],
     tasks: [],
-    isParadiseMember: false
+    isParadiseMember: false,
+    villageId: 'hatteras_village',
+    role: 'TRIBE_LEADER'
   });
 
   // UI Controls
@@ -552,26 +563,59 @@ const App: React.FC = () => {
 
   const handleEndDay = () => {
     setGameState(prev => {
-      let newFullness = prev.survivor.fullness - 1;
+      const currentPhase = prev.survivor.phase;
+      let nextPhase: SocialPhase = 'day';
+      let nextDay = prev.day;
+      let nextSurvivorDay = prev.survivor.day;
+      let newFullness = prev.survivor.fullness;
       let newHp = prev.survivor.hitPoints;
-      
-      if (newFullness < 0) {
-        newFullness = 0;
-        newHp = Math.max(0, newHp - 20);
-      } else if (newFullness > 0 && newHp < 100) {
-        newHp = Math.min(100, newHp + 10);
+      let historyMsg = '';
+
+      // Safe Zone Logic: Bull Hooper Memorial
+      const isAtMemorial = prev.currentRealm.name === 'Bull Hooper Memorial';
+
+      if (currentPhase === 'day') {
+        nextPhase = 'accusation';
+        historyMsg = 'The sun begins to set. Accusations fly as the tribe prepares for the council.';
+      } else if (currentPhase === 'accusation') {
+        nextPhase = 'voting';
+        historyMsg = 'The fire is lit. It is time to vote.';
+        setShowTribalCouncil(true);
+      } else if (currentPhase === 'voting') {
+        nextPhase = 'night';
+        historyMsg = 'The tribe sleeps. Traitors move in the shadows.';
+      } else if (currentPhase === 'night') {
+        nextPhase = 'dawn';
+        historyMsg = 'Dawn breaks over the Graveyard of the Atlantic.';
+      } else if (currentPhase === 'dawn') {
+        nextPhase = 'day';
+        nextDay += 1;
+        nextSurvivorDay += 1;
+        
+        newFullness -= 1;
+        if (newFullness < 0) {
+          newFullness = 0;
+          // Safe zone prevents HP decay from starvation
+          if (!isAtMemorial) {
+            newHp = Math.max(0, newHp - 20);
+          }
+        } else if (newFullness > 0 && newHp < 100) {
+          newHp = Math.min(100, newHp + 10);
+        }
+        historyMsg = `Day ${nextDay} begins.`;
       }
 
       return {
         ...prev,
-        day: prev.day + 1,
+        day: nextDay,
         survivor: {
           ...prev.survivor,
-          day: prev.survivor.day + 1,
+          day: nextSurvivorDay,
+          phase: nextPhase,
           fullness: newFullness,
           hitPoints: newHp
         },
-        history: [...(prev.history || []), `Day ${prev.day} ended. Fullness decreased.`]
+        history: [...(prev.history || []), historyMsg]
       };
     });
   };
@@ -615,6 +659,20 @@ const App: React.FC = () => {
     try {
       const outcome = await generateTribalCouncilOutcome(gameState.survivor, votedId);
       
+      const votesRecord: Record<string, string> = {};
+      outcome.votes.forEach((v: any) => {
+        votesRecord[v.voterId] = v.targetId;
+      });
+
+      // Update metrics after vote
+      const metrics = await generateSocialDeductionMetrics({
+        ...gameState.survivor,
+        votingHistory: {
+          ...gameState.survivor.votingHistory,
+          [`day_${gameState.day}_final`]: votesRecord
+        }
+      });
+
       setGameState(prev => {
         const updatedContestants = prev.survivor.contestants.map(c => 
           c.id === outcome.eliminatedId ? { ...c, status: 'eliminated' as const } : c
@@ -628,9 +686,14 @@ const App: React.FC = () => {
             ...prev.survivor,
             contestants: updatedContestants,
             eliminatedCount: prev.survivor.eliminatedCount + 1,
-            aiLearningProgress: Math.min(100, prev.survivor.aiLearningProgress + 10)
+            aiLearningProgress: Math.min(100, prev.survivor.aiLearningProgress + 10),
+            votingHistory: {
+              ...prev.survivor.votingHistory,
+              [`day_${prev.day}_final`]: votesRecord
+            },
+            metrics: metrics
           },
-          history: [...(prev.history || []), isPlayerEliminated ? "You were voted out!" : `${outcome.eliminatedId} was voted out.`]
+          history: [...(prev.history || []), isPlayerEliminated ? "You were voted out!" : `${outcome.eliminatedId} was voted out: ${outcome.reason}`]
         };
       });
 
@@ -645,6 +708,19 @@ const App: React.FC = () => {
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handleTrustSignal = (signals: Record<string, 1 | 0 | -1>) => {
+    setGameState(prev => ({
+      ...prev,
+      survivor: {
+        ...prev.survivor,
+        votingHistory: {
+          ...prev.survivor.votingHistory,
+          [`day_${prev.day}_signals`]: signals
+        }
+      }
+    }));
   };
 
   const handlePurchaseSkill = (skillId: string) => {
@@ -937,6 +1013,7 @@ const App: React.FC = () => {
               contestants={gameState.survivor.contestants}
               alliances={gameState.survivor.alliances}
               onVote={handleTribalVote}
+              onTrustSignal={handleTrustSignal}
               onClose={() => setShowTribalCouncil(false)}
             />
           )}

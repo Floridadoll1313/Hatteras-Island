@@ -19,10 +19,11 @@ interface TribalCouncilProps {
   contestants: Contestant[];
   alliances: Alliance[];
   onVote: (votedId: string) => Promise<void>;
+  onTrustSignal: (signals: Record<string, 1 | 0 | -1>) => void;
   onClose: () => void;
 }
 
-const TribalCouncil: React.FC<TribalCouncilProps> = ({ contestants, alliances, onVote, onClose }) => {
+const TribalCouncil: React.FC<TribalCouncilProps> = ({ contestants, alliances, onVote, onTrustSignal, onClose }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isVoting, setIsVoting] = useState(false);
   const [voteStage, setVoteStage] = useState<'accusation' | 'voting' | 'reveal'>('accusation');
@@ -36,6 +37,7 @@ const TribalCouncil: React.FC<TribalCouncilProps> = ({ contestants, alliances, o
   };
 
   const handleProceedToVote = () => {
+    onTrustSignal(trustTokens);
     setVoteStage('voting');
   };
 

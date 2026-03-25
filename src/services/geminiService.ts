@@ -135,7 +135,15 @@ export async function generateSurvivorDialogue(contestant: Contestant, context: 
 export async function generateTribalCouncilOutcome(survivor: SurvivorState, votedId: string) {
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
-    contents: `Tribal Council on Hatteras Island. The player voted for contestant ID: ${votedId}. Current tribe: ${survivor.tribe}. Contestants: ${JSON.stringify(survivor.contestants)}. Generate the outcome of the vote, including who is eliminated and a dramatic reason.`,
+    contents: `Tribal Council on Hatteras Island. 
+    The player voted for contestant ID: ${votedId}. 
+    Current phase: ${survivor.phase}.
+    Current tribe: ${survivor.tribe}. 
+    Contestants (with BDI logic): ${JSON.stringify(survivor.contestants)}. 
+    Voting History: ${JSON.stringify(survivor.votingHistory)}.
+    Generate the outcome of the vote, including who is eliminated, a dramatic reason, and the individual votes of all active contestants.
+    The AI contestants should use their BDI logic (beliefs, desires, intentions) to decide their vote. 
+    Wolves should try to coordinate to eliminate villagers without being detected.`,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
@@ -143,8 +151,45 @@ export async function generateTribalCouncilOutcome(survivor: SurvivorState, vote
         properties: {
           eliminatedId: { type: Type.STRING },
           reason: { type: Type.STRING },
-          drama: { type: Type.STRING }
-        }
+          drama: { type: Type.STRING },
+          votes: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                voterId: { type: Type.STRING },
+                targetId: { type: Type.STRING }
+              },
+              required: ["voterId", "targetId"]
+            }
+          }
+        },
+        required: ["eliminatedId", "reason", "drama", "votes"]
+      }
+    }
+  });
+  return JSON.parse(response.text);
+}
+
+export async function generateSocialDeductionMetrics(survivor: SurvivorState) {
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: `Analyze the voting history and current state of the Hatteras Realm social deduction game: ${JSON.stringify(survivor)}. 
+    Calculate the following metrics:
+    1. Majority Win Rate: How often the majority of the tribe (or the wolf pack) successfully eliminated their target.
+    2. Tie Indicator: Frequency of split votes or ties.
+    3. Coordination Efficiency: How well the factions (Villagers vs Wolves) are coordinating their trust signals and final votes.
+    Return these as values between 0 and 1.`,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          majorityWinRate: { type: Type.NUMBER },
+          tieIndicator: { type: Type.NUMBER },
+          coordinationEfficiency: { type: Type.NUMBER }
+        },
+        required: ["majorityWinRate", "tieIndicator", "coordinationEfficiency"]
       }
     }
   });

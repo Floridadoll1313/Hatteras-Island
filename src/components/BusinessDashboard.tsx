@@ -34,7 +34,8 @@ import {
   Circle, 
   Rocket, 
   Mail,
-  Lock
+  Lock,
+  Wrench
 } from 'lucide-react';
 import { GameState } from '../types';
 
@@ -48,6 +49,34 @@ const BusinessDashboard: React.FC<BusinessDashboardProps> = ({
   onClose
 }) => {
   const survivor = gameState.survivor;
+  const [unlocking, setUnlocking] = React.useState<string | null>(null);
+  const [unlockMessage, setUnlockMessage] = React.useState<string | null>(null);
+
+  const handleUnlockTool = async (toolId: string) => {
+    setUnlocking(toolId);
+    setUnlockMessage(null);
+    try {
+      const response = await fetch(`/api/village/${gameState.villageId}/toolbox/${toolId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': gameState.role === 'TRIBE_LEADER' ? 'Bearer mock-tribe-leader-token' : 'Bearer mock-villager-token'
+        }
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        setUnlockMessage(`SUCCESS: ${data.message}`);
+      } else {
+        setUnlockMessage(`ERROR: ${data.message}`);
+      }
+    } catch (error) {
+      console.error("Unlock Error:", error);
+      setUnlockMessage("ERROR: Failed to connect to the Council.");
+    } finally {
+      setUnlocking(null);
+    }
+  };
 
   return (
     <motion.div
@@ -252,6 +281,83 @@ const BusinessDashboard: React.FC<BusinessDashboardProps> = ({
                       </span>
                       <span className="text-[8px] text-orange-400/40 font-mono uppercase tracking-widest block mt-0.5">{t.status}</span>
                     </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Survival Toolbox - Tribe Leader Only Area */}
+          <div className="mt-12 p-10 bg-gradient-to-br from-orange-900/20 to-black/40 border border-orange-500/20 rounded-[2.5rem] relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-10 opacity-5">
+              <Wrench className="w-48 h-48 text-orange-500" />
+            </div>
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-10">
+                <div className="flex items-center gap-6">
+                  <div className="w-16 h-16 rounded-2xl bg-orange-700 flex items-center justify-center shadow-lg shadow-orange-700/20">
+                    <Wrench className="text-white w-8 h-8" />
+                  </div>
+                  <div>
+                    <h3 className="text-3xl font-bold text-white uppercase italic tracking-tighter">Survival Toolbox</h3>
+                    <p className="text-orange-400 font-mono text-[10px] uppercase tracking-[0.4em] mt-1">Tribe Leader Automation Suite</p>
+                  </div>
+                </div>
+                {gameState.role === 'TRIBE_LEADER' ? (
+                  <div className="px-4 py-2 bg-green-900/20 border border-green-500/30 rounded-full flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-green-400" />
+                    <span className="text-[10px] text-green-400 font-mono uppercase tracking-widest">Authorized Tribe Leader</span>
+                  </div>
+                ) : (
+                  <div className="px-4 py-2 bg-red-900/20 border border-red-500/30 rounded-full flex items-center gap-2">
+                    <Lock className="w-4 h-4 text-red-400" />
+                    <span className="text-[10px] text-red-400 font-mono uppercase tracking-widest">Access Restricted</span>
+                  </div>
+                )}
+              </div>
+
+              {unlockMessage && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`mb-8 p-4 rounded-xl font-mono text-[10px] uppercase tracking-widest border ${
+                    unlockMessage.startsWith('SUCCESS') ? 'bg-green-900/20 border-green-500/30 text-green-400' : 'bg-red-900/20 border-red-500/30 text-red-400'
+                  }`}
+                >
+                  {unlockMessage}
+                </motion.div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {[
+                  { id: 'auto_outreach', name: 'Neural Outreach Bot', desc: 'Automates social signaling and trust building.', cost: '500 SD' },
+                  { id: 'market_oracle', name: 'Market Prediction Oracle', desc: 'Real-time analysis of digital tides.', cost: '1200 SD' },
+                  { id: 'resource_gatherer', name: 'Autonomous Scavenger', desc: 'Collects driftwood and resources while you sleep.', cost: '800 SD' },
+                  { id: 'tribe_monitor', name: 'Tribe Sentiment Analyzer', desc: 'Predicts voting patterns and hidden alliances.', cost: '1500 SD' }
+                ].map((tool) => (
+                  <div key={tool.id} className="p-6 bg-black/40 border border-orange-500/10 rounded-3xl group hover:border-orange-500/40 transition-all">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h4 className="text-lg font-bold text-white uppercase italic">{tool.name}</h4>
+                        <p className="text-[10px] text-orange-400/60 font-mono uppercase tracking-widest mt-1">{tool.desc}</p>
+                      </div>
+                      <span className="text-orange-500 font-mono text-xs font-bold">{tool.cost}</span>
+                    </div>
+                    <button
+                      onClick={() => handleUnlockTool(tool.id)}
+                      disabled={unlocking !== null || gameState.role !== 'TRIBE_LEADER'}
+                      className={`w-full py-3 rounded-xl font-bold uppercase italic tracking-widest text-[10px] transition-all ${
+                        gameState.role === 'TRIBE_LEADER' 
+                          ? 'bg-orange-600 hover:bg-orange-500 text-white shadow-lg shadow-orange-600/20 active:scale-95' 
+                          : 'bg-white/5 text-white/20 cursor-not-allowed'
+                      }`}
+                    >
+                      {unlocking === tool.id ? (
+                        <RefreshCw className="w-4 h-4 animate-spin mx-auto" />
+                      ) : (
+                        'Unlock Survival Tool'
+                      )}
+                    </button>
                   </div>
                 ))}
               </div>
