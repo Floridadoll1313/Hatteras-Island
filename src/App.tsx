@@ -238,7 +238,36 @@ const App: React.FC = () => {
           if (docSnap.exists()) {
             const data = docSnap.data();
             if (data.gameState) {
-              setGameState(data.gameState);
+              setGameState(prev => ({
+                ...prev,
+                ...data.gameState,
+                currentRealm: {
+                  ...prev.currentRealm,
+                  ...(data.gameState.currentRealm || {}),
+                  threats: data.gameState.currentRealm?.threats || prev.currentRealm.threats,
+                  npcs: data.gameState.currentRealm?.npcs || prev.currentRealm.npcs,
+                  discoveredItems: data.gameState.currentRealm?.discoveredItems || prev.currentRealm.discoveredItems,
+                  entities: data.gameState.currentRealm?.entities || prev.currentRealm.entities,
+                  paths: data.gameState.currentRealm?.paths || prev.currentRealm.paths,
+                  options: data.gameState.currentRealm?.options || prev.currentRealm.options,
+                },
+                survivor: {
+                  ...prev.survivor,
+                  ...(data.gameState.survivor || {}),
+                  idols: data.gameState.survivor?.idols || prev.survivor.idols,
+                  alliances: data.gameState.survivor?.alliances || prev.survivor.alliances,
+                  aiPiecesCollected: data.gameState.survivor?.aiPiecesCollected || prev.survivor.aiPiecesCollected,
+                  aiKnowledgeBank: data.gameState.survivor?.aiKnowledgeBank || prev.survivor.aiKnowledgeBank,
+                  contestants: data.gameState.survivor?.contestants || prev.survivor.contestants,
+                  challenges: data.gameState.survivor?.challenges || prev.survivor.challenges,
+                  votingHistory: data.gameState.survivor?.votingHistory || prev.survivor.votingHistory,
+                  metrics: data.gameState.survivor?.metrics || prev.survivor.metrics,
+                },
+                lighthouse: {
+                  ...prev.lighthouse,
+                  ...(data.gameState.lighthouse || {})
+                }
+              }));
             }
           } else {
             // Mock membership check for new users
@@ -408,7 +437,8 @@ const App: React.FC = () => {
         }
       });
 
-      const result = JSON.parse(response.text);
+      const jsonStr = response.text?.replace(/```json\n?|\n?```/g, '') || '{}';
+      const result = JSON.parse(jsonStr);
       
       if (result.won && result.pieceFoundId) {
         collectAIPiece(result.pieceFoundId);
@@ -460,7 +490,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleCampInteract = async (contestantId: string, action: string) => {
+  const handleCampInteract = async (contestantId: string, action: string): Promise<string | void> => {
     const contestant = gameState.survivor.contestants.find(c => c.id === contestantId);
     if (!contestant) return;
 
@@ -475,13 +505,14 @@ const App: React.FC = () => {
           },
           history: [...(prev.history || []), `Gave food to ${contestant.name}. Trust increased.`]
         }));
+        return `You gave food to ${contestant.name}. They look grateful.`;
       } else {
         setGameState(prev => ({
           ...prev,
           history: [...(prev.history || []), `Not enough food to give to ${contestant.name}.`]
         }));
+        return `You don't have enough food to give.`;
       }
-      return;
     }
 
     if (action === 'take_food') {
@@ -494,7 +525,7 @@ const App: React.FC = () => {
         },
         history: [...(prev.history || []), `Stole food from ${contestant.name}. Morale decreased.`]
       }));
-      return;
+      return `You stole food from ${contestant.name}. They look angry.`;
     }
 
     try {
@@ -507,8 +538,10 @@ const App: React.FC = () => {
           campMorale: Math.min(100, prev.survivor.campMorale + 2)
         }
       }));
+      return dialogue;
     } catch (error) {
       console.error("Interaction failed:", error);
+      return "The contestant ignores you. (AI Generation Failed)";
     }
   };
 
@@ -811,6 +844,7 @@ const App: React.FC = () => {
     if (plan.price === 0) {
       setShowPricing(false);
       setShowSubscriptionSuccess(plan.name);
+      setGameState(prev => ({ ...prev, isParadiseMember: true }));
       return;
     }
 

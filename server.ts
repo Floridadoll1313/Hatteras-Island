@@ -3,9 +3,20 @@ import { createServer as createViteServer } from "vite";
 import path from "path";
 import Stripe from "stripe";
 
-const stripe = process.env.STRIPE_SECRET_KEY 
-  ? new Stripe(process.env.STRIPE_SECRET_KEY) 
-  : null;
+let stripeClient: Stripe | null = null;
+
+function getStripe(): Stripe {
+  if (!stripeClient) {
+    const key = process.env.STRIPE_SECRET_KEY;
+    if (!key) {
+      throw new Error('STRIPE_SECRET_KEY environment variable is required. Please add it in the AI Studio Secrets menu.');
+    }
+    // Clean the key: trim whitespace and remove accidental quotes
+    const cleanKey = key.trim().replace(/^["']|["']$/g, '');
+    stripeClient = new Stripe(cleanKey);
+  }
+  return stripeClient;
+}
 
 async function startServer() {
   const app = express();
@@ -68,13 +79,10 @@ async function startServer() {
 
   // Stripe Checkout Endpoint
   app.post("/api/create-checkout-session", async (req, res) => {
-    if (!stripe) {
-      return res.status(500).json({ error: "Stripe is not configured. Please add STRIPE_SECRET_KEY to your environment variables." });
-    }
-
-    const { name, price, description, email } = req.body;
-
     try {
+      const stripe = getStripe();
+      const { name, price, description, email } = req.body;
+
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ["card"],
         customer_email: email,
@@ -106,11 +114,8 @@ async function startServer() {
 
   // Retrieve Checkout Session Endpoint
   app.get("/api/checkout-session/:sessionId", async (req, res) => {
-    if (!stripe) {
-      return res.status(500).json({ error: "Stripe is not configured." });
-    }
-
     try {
+      const stripe = getStripe();
       const session = await stripe.checkout.sessions.retrieve(req.params.sessionId);
       res.json({ customer: session.customer });
     } catch (error: any) {
@@ -121,13 +126,10 @@ async function startServer() {
 
   // Stripe Customer Portal Endpoint
   app.post("/api/create-portal-session", async (req, res) => {
-    if (!stripe) {
-      return res.status(500).json({ error: "Stripe is not configured." });
-    }
-
-    const { customerId } = req.body;
-
     try {
+      const stripe = getStripe();
+      const { customerId } = req.body;
+
       // In a real app, you'd fetch the customerId from your database
       // For this demo, if no customerId is provided, we can't create a portal session
       if (!customerId) {

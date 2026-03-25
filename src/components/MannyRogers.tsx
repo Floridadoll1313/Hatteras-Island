@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { X, Brain, Download, MessageSquare, ChevronRight } from 'lucide-react';
+import { X, Brain, Download, MessageSquare, ChevronRight, Loader2 } from 'lucide-react';
 import { GameState } from '../types';
+import { GoogleGenAI } from '@google/genai';
 
 interface MannyRogersProps {
   gameState: GameState;
@@ -14,14 +15,41 @@ const MannyRogers: React.FC<MannyRogersProps> = ({ gameState, onClose }) => {
     { sender: 'Manny', message: "Welcome to Buxton. I'm Manny Rogers, Lead AI Strategist. How can I help your business scale today?" }
   ]);
   const [input, setInput] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
 
-  const handleSend = () => {
-    if (!input.trim()) return;
-    setChatLog([...chatLog, { sender: 'You', message: input }]);
+  const handleSend = async () => {
+    if (!input.trim() || isTyping) return;
+    
+    const userMessage = input;
+    setChatLog(prev => [...prev, { sender: 'You', message: userMessage }]);
     setInput('');
-    setTimeout(() => {
-      setChatLog(prev => [...prev, { sender: 'Manny', message: "That's an interesting approach. Let's look at how Behavior Trees and Blackboards can automate that decision-making process for your customer service agents." }]);
-    }, 1000);
+    setIsTyping(true);
+
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      
+      // Build conversation history
+      const history = chatLog.map(log => `${log.sender}: ${log.message}`).join('\n');
+      
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: `You are Manny Rogers, Lead AI Strategist based near the Cape Hatteras Light. You bridge the gap between survival strategy and SMB automation. 
+        You are talking to a user who is playing a game where they survive on an island and learn about AI.
+        Keep your responses concise, professional, and thematic to Hatteras Island and AI business strategy.
+        
+        Conversation history:
+        ${history}
+        You: ${userMessage}
+        Manny:`,
+      });
+
+      setChatLog(prev => [...prev, { sender: 'Manny', message: response.text || "I'm analyzing that data. Let's discuss it further soon." }]);
+    } catch (error) {
+      console.error("Manny chat failed:", error);
+      setChatLog(prev => [...prev, { sender: 'Manny', message: "Sorry, my connection to the mainland is a bit spotty right now. Can you repeat that?" }]);
+    } finally {
+      setIsTyping(false);
+    }
   };
 
   return (
@@ -86,6 +114,15 @@ const MannyRogers: React.FC<MannyRogersProps> = ({ gameState, onClose }) => {
                     </div>
                   </div>
                 ))}
+                {isTyping && (
+                  <div className="flex flex-col items-start">
+                    <span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest mb-1">Manny</span>
+                    <div className="p-4 rounded-2xl bg-white/10 text-gray-200 rounded-tl-none flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
+                      <span className="text-sm italic text-gray-400">Analyzing data...</span>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="p-4 border-t border-white/10 bg-white/5 flex gap-2">
                 <input 
@@ -94,11 +131,13 @@ const MannyRogers: React.FC<MannyRogersProps> = ({ gameState, onClose }) => {
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                   placeholder="Ask Manny about AI strategy..."
-                  className="flex-1 bg-black/50 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50"
+                  disabled={isTyping}
+                  className="flex-1 bg-black/50 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50 disabled:opacity-50"
                 />
                 <button 
                   onClick={handleSend}
-                  className="p-2 bg-blue-600 hover:bg-blue-500 rounded-xl transition-colors"
+                  disabled={isTyping}
+                  className="p-2 bg-blue-600 hover:bg-blue-500 rounded-xl transition-colors disabled:opacity-50"
                 >
                   <ChevronRight className="w-5 h-5 text-white" />
                 </button>

@@ -21,7 +21,7 @@ import { GameState, Contestant, SurvivorState } from '../types';
 
 interface CampLifeProps {
   gameState: GameState;
-  onInteract: (contestantId: string, action: string) => void;
+  onInteract: (contestantId: string, action: string) => Promise<string | void>;
   onManageCamp: (action: string) => void;
   onEndDay: () => void;
   onClose: () => void;
@@ -31,12 +31,30 @@ const CampLife: React.FC<CampLifeProps> = ({ gameState, onInteract, onManageCamp
   const survivor = gameState.survivor;
   const activeContestants = survivor.contestants.filter(c => c.status === 'active' && !c.isPlayer);
   const [selectedContestant, setSelectedContestant] = useState<Contestant | null>(null);
+  const [interactionDialogue, setInteractionDialogue] = useState<string | null>(null);
+  const [isInteracting, setIsInteracting] = useState(false);
 
   const campStats = [
     { id: 'morale', label: 'Tribe Morale', value: survivor.campMorale, icon: Heart, color: 'text-pink-400' },
     { id: 'infrastructure', label: 'Camp Infrastructure', value: survivor.campInfrastructure, icon: Home, color: 'text-emerald-400' },
     { id: 'ai_learning', label: 'AI Learning', value: survivor.aiLearningProgress, icon: Brain, color: 'text-blue-400' }
   ];
+
+  const handleInteract = async (contestantId: string, action: string) => {
+    if (isInteracting) return;
+    setIsInteracting(true);
+    setInteractionDialogue(null);
+    
+    // Call the parent handler which updates game state
+    const dialogue = await onInteract(contestantId, action);
+    
+    setIsInteracting(false);
+    if (dialogue) {
+      setInteractionDialogue(dialogue);
+    } else {
+      setInteractionDialogue("Interaction complete.");
+    }
+  };
 
   return (
     <motion.div
@@ -218,24 +236,48 @@ const CampLife: React.FC<CampLifeProps> = ({ gameState, onInteract, onManageCamp
                     <InteractionButton 
                       label="Give Food" 
                       description="Build trust (+1 Food)"
-                      onClick={() => onInteract(selectedContestant.id, 'give_food')}
+                      onClick={() => handleInteract(selectedContestant.id, 'give_food')}
+                      disabled={isInteracting}
                     />
                     <InteractionButton 
                       label="Take Food" 
                       description="Steal supplies (-1 Food)"
-                      onClick={() => onInteract(selectedContestant.id, 'take_food')}
+                      onClick={() => handleInteract(selectedContestant.id, 'take_food')}
+                      disabled={isInteracting}
                     />
                     <InteractionButton 
                       label="AI Alliance Pitch" 
                       description="Use AI to calculate shared interests."
-                      onClick={() => onInteract(selectedContestant.id, 'alliance')}
+                      onClick={() => handleInteract(selectedContestant.id, 'alliance')}
+                      disabled={isInteracting}
                     />
                     <InteractionButton 
                       label="Social Intelligence" 
                       description="Learn about their motivations via AI."
-                      onClick={() => onInteract(selectedContestant.id, 'learn')}
+                      onClick={() => handleInteract(selectedContestant.id, 'learn')}
+                      disabled={isInteracting}
                     />
                   </div>
+
+                  {isInteracting && (
+                    <div className="p-6 bg-orange-500/10 border border-orange-500/30 rounded-2xl flex items-center gap-4 animate-pulse">
+                      <Brain className="w-6 h-6 text-orange-400" />
+                      <p className="text-orange-400 font-mono text-sm uppercase tracking-widest">Generating AI Response...</p>
+                    </div>
+                  )}
+
+                  {interactionDialogue && !isInteracting && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="p-6 bg-white/5 border border-white/20 rounded-2xl relative"
+                    >
+                      <div className="absolute -top-3 left-6 bg-[#0a0a0a] px-2 text-xs font-mono text-orange-400 uppercase tracking-widest">
+                        {selectedContestant.name} says:
+                      </div>
+                      <p className="text-gray-300 leading-relaxed italic">"{interactionDialogue}"</p>
+                    </motion.div>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -270,12 +312,13 @@ const ActionButton: React.FC<{ icon: any, label: string, description: string, on
   </button>
 );
 
-const InteractionButton: React.FC<{ label: string, description: string, onClick: () => void }> = ({ label, description, onClick }) => (
+const InteractionButton: React.FC<{ label: string, description: string, onClick: () => void, disabled?: boolean }> = ({ label, description, onClick, disabled }) => (
   <button
     onClick={onClick}
-    className="p-6 bg-white/5 border border-white/10 rounded-2xl text-left group hover:bg-orange-600/10 hover:border-orange-500/30 transition-all"
+    disabled={disabled}
+    className={`p-6 bg-white/5 border border-white/10 rounded-2xl text-left group transition-all ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-orange-600/10 hover:border-orange-500/30'}`}
   >
-    <div className="text-sm font-bold text-white uppercase italic tracking-tight group-hover:text-orange-400 transition-colors">{label}</div>
+    <div className={`text-sm font-bold text-white uppercase italic tracking-tight transition-colors ${disabled ? '' : 'group-hover:text-orange-400'}`}>{label}</div>
     <div className="text-[10px] text-gray-500 uppercase tracking-widest mt-2">{description}</div>
   </button>
 );

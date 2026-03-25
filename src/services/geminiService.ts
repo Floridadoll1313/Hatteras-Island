@@ -36,7 +36,8 @@ export async function generateRealmUpdate(currentRealm: Realm, choice: string, a
               discoveredItems: { type: Type.ARRAY, items: { type: Type.STRING } },
               threats: { type: Type.ARRAY, items: { type: Type.STRING } },
               npcs: { type: Type.ARRAY, items: { type: Type.STRING } }
-            }
+            },
+            required: ["id", "name", "description", "lore", "entities", "options", "paths", "discoveredItems", "threats", "npcs"]
           },
           combat: {
             type: Type.OBJECT,
@@ -68,12 +69,14 @@ export async function generateRealmUpdate(currentRealm: Realm, choice: string, a
             }
           },
           item: { type: Type.STRING }
-        }
+        },
+        required: ["newRealm"]
       }
     }
   });
 
-  return JSON.parse(response.text);
+  const jsonStr = response.text?.replace(/```json\n?|\n?```/g, '') || '{}';
+  return JSON.parse(jsonStr);
 }
 
 export async function generateCombatAction(combat: CombatState, action: 'attack' | 'defend' | 'special') {
@@ -98,7 +101,8 @@ export async function generateCombatAction(combat: CombatState, action: 'attack'
                   health: { type: Type.NUMBER },
                   maxHealth: { type: Type.NUMBER },
                   abilities: { type: Type.ARRAY, items: { type: Type.STRING } }
-                }
+                },
+                required: ["name", "health", "maxHealth", "abilities"]
               },
               logs: {
                 type: Type.ARRAY,
@@ -108,20 +112,24 @@ export async function generateCombatAction(combat: CombatState, action: 'attack'
                     timestamp: { type: Type.NUMBER },
                     type: { type: Type.STRING, enum: ['player', 'enemy', 'system'] },
                     message: { type: Type.STRING }
-                  }
+                  },
+                  required: ["timestamp", "type", "message"]
                 }
               },
               isDefending: { type: Type.BOOLEAN }
-            }
+            },
+            required: ["turn", "playerHealth", "playerMaxHealth", "enemy", "logs", "isDefending"]
           },
           victory: { type: Type.BOOLEAN },
           defeat: { type: Type.BOOLEAN }
-        }
+        },
+        required: ["newCombatState", "victory", "defeat"]
       }
     }
   });
 
-  return JSON.parse(response.text);
+  const jsonStr = response.text?.replace(/```json\n?|\n?```/g, '') || '{}';
+  return JSON.parse(jsonStr);
 }
 
 export async function generateSurvivorDialogue(contestant: Contestant, context: string) {
@@ -168,7 +176,8 @@ export async function generateTribalCouncilOutcome(survivor: SurvivorState, vote
       }
     }
   });
-  return JSON.parse(response.text);
+  const jsonStr = response.text?.replace(/```json\n?|\n?```/g, '') || '{}';
+  return JSON.parse(jsonStr);
 }
 
 export async function generateSocialDeductionMetrics(survivor: SurvivorState) {
@@ -193,7 +202,8 @@ export async function generateSocialDeductionMetrics(survivor: SurvivorState) {
       }
     }
   });
-  return JSON.parse(response.text);
+  const jsonStr = response.text?.replace(/```json\n?|\n?```/g, '') || '{}';
+  return JSON.parse(jsonStr);
 }
 
 export async function generateAIAllianceLogic(survivor: SurvivorState) {
@@ -215,15 +225,18 @@ export async function generateAIAllianceLogic(survivor: SurvivorState) {
                 members: { type: Type.ARRAY, items: { type: Type.STRING } },
                 strength: { type: Type.NUMBER },
                 trust: { type: Type.NUMBER }
-              }
+              },
+              required: ["id", "name", "members", "strength", "trust"]
             }
           },
           logs: { type: Type.ARRAY, items: { type: Type.STRING } }
-        }
+        },
+        required: ["newAlliances", "logs"]
       }
     }
   });
-  return JSON.parse(response.text);
+  const jsonStr = response.text?.replace(/```json\n?|\n?```/g, '') || '{}';
+  return JSON.parse(jsonStr);
 }
 
 export async function generateRealmImage(realmName: string) {
@@ -242,9 +255,11 @@ export async function validateBusinessSolution(problem: string, solution: string
         properties: {
           isValid: { type: Type.BOOLEAN },
           feedback: { type: Type.STRING }
-        }
+        },
+        required: ["isValid", "feedback"]
       }
     }
   });
-  return JSON.parse(response.text);
+  const jsonStr = response.text?.replace(/```json\n?|\n?```/g, '') || '{}';
+  return JSON.parse(jsonStr);
 }
