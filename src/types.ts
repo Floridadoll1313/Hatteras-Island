@@ -181,6 +181,9 @@ export interface SurvivorState {
   hitPoints: number;
   foodSupply: number;
   phase: SocialPhase;
+  campImage?: string;
+  challengeVideo?: string;
+  isGeneratingVideo?: boolean;
   votingHistory: Record<string, Record<string, VotingToken>>; // day_phase -> voterId -> token/targetId
   metrics: {
     majorityWinRate: number;

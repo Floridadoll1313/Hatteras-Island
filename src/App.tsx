@@ -116,6 +116,10 @@ import {
   validateBusinessSolution,
   generateSocialDeductionMetrics
 } from './services/geminiService';
+import { 
+  generateCampImage, 
+  generateChallengeVideo 
+} from './services/visualService';
 
 // Firebase Config
 import firebaseConfig from '../firebase-applet-config.json';
@@ -209,7 +213,35 @@ const App: React.FC = () => {
   const [combatLogFilter, setCombatLogFilter] = useState<'all' | 'player' | 'enemy' | 'system'>('all');
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // --- Auth & Persistence ---
+  // --- Effects ---
+  useEffect(() => {
+    // Generate initial camp image if missing and user is logged in
+    if (user && isLoaded && !gameState.survivor.campImage) {
+      const initCampImage = async () => {
+        try {
+          const imageUrl = await generateCampImage(
+            gameState.survivor.contestants,
+            gameState.survivor.day,
+            gameState.survivor.phase,
+            gameState.villageId
+          );
+          if (imageUrl) {
+            setGameState(prev => ({
+              ...prev,
+              survivor: {
+                ...prev.survivor,
+                campImage: imageUrl
+              }
+            }));
+          }
+        } catch (error) {
+          console.error("Initial camp image generation failed:", error);
+        }
+      };
+      initCampImage();
+    }
+  }, [user, isLoaded, gameState.survivor.campImage]);
+
   useEffect(() => {
     // Check URL for Stripe success/cancel
     const params = new URLSearchParams(window.location.search);
@@ -409,7 +441,23 @@ const App: React.FC = () => {
     const challenge = SURVIVOR_CHALLENGES.find(c => c.id === challengeId);
     if (!challenge) return;
 
+    // Start video generation in background
+    setGameState(prev => ({
+      ...prev,
+      survivor: {
+        ...prev.survivor,
+        isGeneratingVideo: true
+      }
+    }));
+
     try {
+      // Generate video in parallel with outcome
+      const videoPromise = generateChallengeVideo(challenge, {
+        hitPoints: gameState.survivor.hitPoints,
+        fullness: gameState.survivor.fullness,
+        tribeLevel: gameState.survivor.tribeLevel
+      });
+      
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
@@ -440,6 +488,9 @@ const App: React.FC = () => {
       const jsonStr = response.text?.replace(/```json\n?|\n?```/g, '') || '{}';
       const result = JSON.parse(jsonStr);
       
+      // Wait for video to finish or timeout
+      const videoUrl = await videoPromise;
+
       if (result.won && result.pieceFoundId) {
         collectAIPiece(result.pieceFoundId);
       }
@@ -456,13 +507,24 @@ const App: React.FC = () => {
         return {
           ...prev,
           history: newHistory,
-          survivor: newSurvivor,
+          survivor: {
+            ...newSurvivor,
+            challengeVideo: videoUrl || undefined,
+            isGeneratingVideo: false
+          },
           evolution: Math.min(1, prev.evolution + 0.02)
         };
       });
 
     } catch (error) {
       console.error("Challenge failed:", error);
+      setGameState(prev => ({
+        ...prev,
+        survivor: {
+          ...prev.survivor,
+          isGeneratingVideo: false
+        }
+      }));
     } finally {
       setIsProcessing(false);
     }
@@ -595,7 +657,10 @@ const App: React.FC = () => {
     }));
   };
 
-  const handleEndDay = () => {
+  const handleEndDay = async () => {
+    let isNewDay = false;
+    let nextState: GameState | null = null;
+
     setGameState(prev => {
       const currentPhase = prev.survivor.phase;
       let nextPhase: SocialPhase = 'day';
@@ -625,6 +690,7 @@ const App: React.FC = () => {
         nextPhase = 'day';
         nextDay += 1;
         nextSurvivorDay += 1;
+        isNewDay = true;
         
         newFullness -= 1;
         if (newFullness < 0) {
@@ -639,7 +705,7 @@ const App: React.FC = () => {
         historyMsg = `Day ${nextDay} begins.`;
       }
 
-      return {
+      nextState = {
         ...prev,
         day: nextDay,
         survivor: {
@@ -651,7 +717,31 @@ const App: React.FC = () => {
         },
         history: [...(prev.history || []), historyMsg]
       };
+      return nextState;
     });
+
+    // If it's a new day, generate a fresh camp image
+    if (isNewDay && nextState) {
+      try {
+        const imageUrl = await generateCampImage(
+          (nextState as GameState).survivor.contestants,
+          (nextState as GameState).survivor.day,
+          (nextState as GameState).survivor.phase,
+          (nextState as GameState).villageId
+        );
+        if (imageUrl) {
+          setGameState(prev => ({
+            ...prev,
+            survivor: {
+              ...prev.survivor,
+              campImage: imageUrl
+            }
+          }));
+        }
+      } catch (error) {
+        console.error("Failed to generate camp image:", error);
+      }
+    }
   };
 
   const handleCombatAction = async (action: 'attack' | 'defend' | 'special') => {
@@ -1168,6 +1258,50 @@ const App: React.FC = () => {
             <SalvoMemorial 
               onClose={() => setShowSalvoMemorial(false)}
             />
+          )}
+
+          {/* Real-time Visual Overlays */}
+          {gameState.survivor.isGeneratingVideo && (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-xl">
+              <div className="text-center space-y-6">
+                <div className="relative">
+                  <motion.div 
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                    className="w-24 h-24 border-4 border-orange-500/20 border-t-orange-500 rounded-full"
+                  />
+                  <Sparkles className="absolute inset-0 m-auto w-8 h-8 text-orange-500 animate-pulse" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-3xl font-black uppercase italic tracking-tighter text-white">Generating Challenge Highlight</h3>
+                  <p className="text-orange-400 font-mono text-xs uppercase tracking-[0.3em]">AI is synthesizing real-time video footage...</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {gameState.survivor.challengeVideo && (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/95 backdrop-blur-3xl p-8">
+              <div className="relative w-full max-w-5xl aspect-video bg-black rounded-[3rem] overflow-hidden border border-orange-500/30 shadow-2xl shadow-orange-500/20">
+                <video 
+                  src={gameState.survivor.challengeVideo} 
+                  autoPlay 
+                  loop 
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none"></div>
+                <div className="absolute top-8 left-8">
+                  <div className="text-xs font-mono text-orange-400 uppercase tracking-[0.4em] mb-2">Challenge Highlight</div>
+                  <h3 className="text-4xl font-black uppercase italic tracking-tighter text-white">Live Action Feed</h3>
+                </div>
+                <button 
+                  onClick={() => setGameState(prev => ({ ...prev, survivor: { ...prev.survivor, challengeVideo: undefined } }))}
+                  className="absolute top-8 right-8 p-4 bg-black/50 hover:bg-orange-600 rounded-full transition-all text-white border border-white/10"
+                >
+                  <X className="w-8 h-8" />
+                </button>
+              </div>
+            </div>
           )}
 
           {showSubscriptionSuccess && (

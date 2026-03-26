@@ -90,7 +90,27 @@ const CampLife: React.FC<CampLifeProps> = ({ gameState, onInteract, onManageCamp
 
         <div className="flex-1 flex overflow-hidden">
           {/* Left: Camp Management */}
-          <div className="w-1/3 p-12 border-r border-orange-900/10 bg-black/40 flex flex-col gap-12">
+          <div className="w-1/3 p-12 border-r border-orange-900/10 bg-black/40 flex flex-col gap-12 overflow-y-auto custom-scrollbar">
+            {/* Camp Image Visualization */}
+            {survivor.campImage && (
+              <div className="relative group">
+                <div className="absolute -inset-1 bg-gradient-to-r from-orange-600 to-orange-900 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
+                <div className="relative aspect-video rounded-2xl overflow-hidden border border-orange-900/30">
+                  <img 
+                    src={survivor.campImage} 
+                    alt="Current Camp State" 
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                  <div className="absolute bottom-4 left-4">
+                    <div className="text-[10px] font-mono text-orange-400 uppercase tracking-widest">Real-time Visualization</div>
+                    <div className="text-xs font-bold text-white uppercase italic">Day {survivor.day} • {survivor.phase}</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-8">
               <div className="flex items-center gap-3 text-orange-400">
                 <TrendingUp className="w-5 h-5" />

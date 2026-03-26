@@ -148,6 +148,15 @@ async function startServer() {
     }
   });
 
+  app.get("/api/stripe-status", (req, res) => {
+    const key = process.env.STRIPE_SECRET_KEY;
+    if (!key) {
+      return res.json({ status: 'not_configured' });
+    }
+    const isLive = key.startsWith('sk_live');
+    res.json({ status: 'configured', mode: isLive ? 'live' : 'test' });
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

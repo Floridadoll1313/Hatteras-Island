@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Crown, Check, Zap, Rocket, BarChart3, Briefcase, Mail, ArrowRight } from 'lucide-react';
+import { X, Crown, Check, Zap, Rocket, BarChart3, Briefcase, Mail, ArrowRight, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { TIERS } from '../gameConstants';
 
 interface PricingOverlayProps {
@@ -12,6 +12,15 @@ const PricingOverlay: React.FC<PricingOverlayProps> = ({
   onUpgrade,
   onClose
 }) => {
+  const [stripeStatus, setStripeStatus] = useState<{ status: string, mode?: string } | null>(null);
+
+  useEffect(() => {
+    fetch('/api/stripe-status')
+      .then(res => res.json())
+      .then(data => setStripeStatus(data))
+      .catch(() => setStripeStatus({ status: 'error' }));
+  }, []);
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -27,7 +36,21 @@ const PricingOverlay: React.FC<PricingOverlayProps> = ({
               <Crown className="text-white w-8 h-8" />
             </div>
             <div>
-              <h2 className="text-4xl font-bold text-white tracking-tighter uppercase italic">Island Sovereign</h2>
+              <div className="flex items-center gap-3">
+                <h2 className="text-4xl font-bold text-white tracking-tighter uppercase italic">Island Sovereign</h2>
+                {stripeStatus?.status === 'configured' && (
+                  <div className={`px-2 py-1 rounded-md text-[8px] font-mono uppercase tracking-widest flex items-center gap-1.5 ${stripeStatus.mode === 'live' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'}`}>
+                    <ShieldCheck className="w-3 h-3" />
+                    Stripe {stripeStatus.mode} Mode
+                  </div>
+                )}
+                {stripeStatus?.status === 'not_configured' && (
+                  <div className="px-2 py-1 rounded-md bg-red-500/20 text-red-400 border border-red-500/30 text-[8px] font-mono uppercase tracking-widest flex items-center gap-1.5">
+                    <ShieldAlert className="w-3 h-3" />
+                    Stripe Not Configured
+                  </div>
+                )}
+              </div>
               <p className="text-orange-400 font-mono text-xs uppercase tracking-[0.3em] mt-1">Outer Banks • Neural Nexus Tiers</p>
             </div>
           </div>
